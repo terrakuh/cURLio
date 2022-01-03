@@ -1,0 +1,7 @@
+{
+  "format": {
+    "line_width": 110,
+    "dangle_parens": true,
+    "dangle_align": "prefix"
+  }
+}

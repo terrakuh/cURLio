@@ -1,0 +1,19 @@
+{
+	"name": "C++ Backend",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"settings": {},
+	"extensions": [
+		"ms-vscode.cpptools",
+		"twxs.cmake",
+		"ms-vscode.cmake-tools",
+		"cheshirekow.cmake-format",
+		"albert.TabOut",
+		"gruntfuggly.todo-tree"
+	],
+	"runArgs": [
+		"--network=host",
+		"--cap-add=CAP_SYS_PTRACE"
+	]
+}

@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(CURL REQUIRED)
+find_dependency(Boost REQUIRED)
+find_dependency(Threads REQUIRED)
+
+if(NOT TARGET curlio::curlio)
+  include("${CMAKE_CURRENT_LIST_DIR}/curlio-targets.cmake")
+	set(curlio_FOUND TRUE)
+endif()

@@ -1,0 +1,189 @@
+#pragma once
+
+#include "detail/mover.hpp"
+#include "error.hpp"
+#include "request.hpp"
+
+#include <boost/asio.hpp>
+#include <curl/curl.h>
+#include <map>
+
+namespace curlio {
+
+class Session
+{
+public:
+	Session(boost::asio::any_io_executor executor);
+	Session(Session&& move) = default;
+	~Session() noexcept;
+
+	bool is_valid() const noexcept { return _multi_handle != nullptr; }
+	/// Starts the request. Make sure all data is read and the request is awaited.
+	void start(Request& request);
+	boost::asio::any_io_executor get_executor() noexcept { return _timer.get_executor(); }
+	Session& operator=(Session&& move) = delete;
+
+private:
+	boost::asio::steady_timer _timer;
+	detail::Mover<CURLM*> _multi_handle;
+	detail::Mover<CURLSH*> _share_handle;
+	/// All active connections.
+	std::map<curl_socket_t, boost::asio::ip::tcp::socket> _sockets;
+
+	void _async_wait(boost::asio::ip::tcp::socket& socket, boost::asio::socket_base::wait_type type);
+	void _clean_finished();
+	static int _socket_callback(CURL* handle, curl_socket_t socket, int what, void* self_pointer,
+	                            void* socket_pointer);
+	static int _multi_timer_callback(CURLM* multi, long timeout_ms, void* self_pointer);
+	static curl_socket_t _open_socket(void* self_pointer, curlsocktype purpose,
+	                                  struct curl_sockaddr* address) noexcept;
+	static int _close_socket(void* self_pointer, curl_socket_t socket) noexcept;
+};
+
+Session::Session(boost::asio::any_io_executor executor) : _timer{ executor }
+{
+	_multi_handle = curl_multi_init();
+	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETFUNCTION, &_socket_callback);
+	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETDATA, this);
+	curl_multi_setopt(_multi_handle, CURLMOPT_TIMERFUNCTION, &_multi_timer_callback);
+	curl_multi_setopt(_multi_handle, CURLMOPT_TIMERDATA, this);
+
+	_share_handle = curl_share_init();
+	curl_share_setopt(_share_handle, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+	curl_share_setopt(_share_handle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+}
+
+Session::~Session() noexcept
+{
+	if (_multi_handle != nullptr) {
+		curl_multi_cleanup(_multi_handle);
+	}
+	if (_share_handle != nullptr) {
+		curl_share_cleanup(_share_handle);
+	}
+}
+
+void Session::start(Request& request)
+{
+	if (request._executor) {
+		throw std::system_error{ Code::request_in_use };
+	}
+
+	const auto easy_handle = request.native_handle();
+	request._executor      = get_executor();
+	curl_easy_setopt(easy_handle, CURLOPT_OPENSOCKETFUNCTION, &Session::_open_socket);
+	curl_easy_setopt(easy_handle, CURLOPT_OPENSOCKETDATA, this);
+	curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETFUNCTION, &Session::_close_socket);
+	curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETDATA, this);
+	curl_easy_setopt(easy_handle, CURLOPT_SHARE, _share_handle.get());
+
+	curl_multi_add_handle(_multi_handle, easy_handle);
+}
+
+void Session::_async_wait(boost::asio::ip::tcp::socket& socket, boost::asio::socket_base::wait_type type)
+{
+	socket.async_wait(type, [this, type, &socket](boost::system::error_code ec) {
+		if (!ec) {
+			const auto handle = socket.native_handle();
+			int still_running = 0;
+			curl_multi_socket_action(_multi_handle, handle,
+			                         type == boost::asio::socket_base::wait_read ? CURL_POLL_IN : CURL_POLL_OUT,
+			                         &still_running);
+			_clean_finished();
+			if (still_running <= 0) {
+				_timer.cancel();
+			}
+
+			if (_sockets.find(handle) != _sockets.end()) {
+				_async_wait(socket, type);
+			}
+		}
+	});
+}
+
+void Session::_clean_finished()
+{
+	CURLMsg* message = nullptr;
+	int left         = 0;
+	while ((message = curl_multi_info_read(_multi_handle, &left))) {
+		if (message->msg == CURLMSG_DONE) {
+			Request* request = nullptr;
+			curl_easy_getinfo(message->easy_handle, CURLINFO_PRIVATE, &request);
+			if (request != nullptr) {
+				request->_finish();
+			}
+			curl_multi_remove_handle(_multi_handle, message->easy_handle);
+		}
+	}
+}
+
+int Session::_socket_callback(CURL* handle, curl_socket_t socket, int what, void* self_pointer,
+                              void* socket_pointer)
+{
+	const auto self = static_cast<Session*>(self_pointer);
+	const auto it   = self->_sockets.find(socket);
+	if (it == self->_sockets.end()) {
+		return 0;
+	}
+
+	switch (what) {
+	case CURL_POLL_IN: self->_async_wait(it->second, boost::asio::socket_base::wait_read); break;
+	case CURL_POLL_OUT: self->_async_wait(it->second, boost::asio::socket_base::wait_write); break;
+	case CURL_POLL_INOUT: {
+		self->_async_wait(it->second, boost::asio::socket_base::wait_read);
+		self->_async_wait(it->second, boost::asio::socket_base::wait_write);
+		break;
+	}
+	case CURL_POLL_REMOVE: it->second.cancel(); break;
+	}
+	return 0;
+}
+
+int Session::_multi_timer_callback(CURLM* multi, long timeout_ms, void* self_pointer)
+{
+	const auto self = static_cast<Session*>(self_pointer);
+
+	self->_timer.expires_from_now(std::chrono::milliseconds{ timeout_ms });
+	if (timeout_ms > 0) {
+		self->_timer.async_wait([self](boost::system::error_code ec) {
+			if (!ec) {
+				int still_running = 0;
+				curl_multi_socket_action(self->_multi_handle, CURL_SOCKET_TIMEOUT, 0, &still_running);
+				self->_clean_finished();
+			}
+		});
+	} else {
+		int still_running = 0;
+		curl_multi_socket_action(self->_multi_handle, CURL_SOCKET_TIMEOUT, 0, &still_running);
+		self->_clean_finished();
+	}
+	return 0;
+}
+
+curl_socket_t Session::_open_socket(void* self_pointer, curlsocktype purpose,
+                                    struct curl_sockaddr* address) noexcept
+{
+	const auto self = static_cast<Session*>(self_pointer);
+	if (purpose == CURLSOCKTYPE_IPCXN) {
+		if (address->family == AF_INET) {
+			boost::system::error_code ec;
+			boost::asio::ip::tcp::socket socket{ self->get_executor() };
+			socket.open(boost::asio::ip::tcp::v4(), ec);
+			if (!ec) {
+				auto fd = socket.native_handle();
+				self->_sockets.insert(std::make_pair(fd, std::move(socket)));
+				return fd;
+			}
+		}
+	}
+	return CURL_SOCKET_BAD;
+}
+
+int Session::_close_socket(void* self_pointer, curl_socket_t socket) noexcept
+{
+	const auto self = static_cast<Session*>(self_pointer);
+	self->_sockets.erase(socket);
+	return 0;
+}
+
+} // namespace curlio
