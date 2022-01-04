@@ -4,6 +4,7 @@
 ### Added
 - JSON writer and reader
 - Easier HTTP field setting option
+- Saving cookies to file
 
 ### Fixed
 - Cookie share support

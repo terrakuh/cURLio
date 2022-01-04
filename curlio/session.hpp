@@ -7,6 +7,7 @@
 #include <boost/asio.hpp>
 #include <curl/curl.h>
 #include <map>
+#include <string>
 
 namespace curlio {
 
@@ -22,6 +23,7 @@ public:
 	bool is_valid() const noexcept { return _multi_handle != nullptr; }
 	/// Starts the request. Make sure all data is read and the request is awaited.
 	void start(Request& request);
+	void set_cookie_file(std::string file) { _cookie_file = file; }
 	boost::asio::any_io_executor get_executor() noexcept { return _timer.get_executor(); }
 	Session& operator=(Session&& move) = delete;
 
@@ -30,6 +32,7 @@ private:
 	CURLM* _multi_handle  = nullptr;
 	CURLSH* _share_handle = nullptr;
 	detail::CURL_share_lock _share_lock;
+	std::string _cookie_file;
 	/// All active connections.
 	std::map<curl_socket_t, boost::asio::ip::tcp::socket> _sockets;
 
@@ -81,7 +84,10 @@ inline void Session::start(Request& request)
 	curl_easy_setopt(easy_handle, CURLOPT_OPENSOCKETDATA, this);
 	curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETFUNCTION, &Session::_close_socket);
 	curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETDATA, this);
-	curl_easy_setopt(easy_handle, CURLOPT_COOKIEFILE, "");
+	curl_easy_setopt(easy_handle, CURLOPT_COOKIEFILE, _cookie_file.c_str());
+	if (!_cookie_file.empty()) {
+		curl_easy_setopt(easy_handle, CURLOPT_COOKIEJAR, _cookie_file.c_str());
+	}
 	curl_easy_setopt(easy_handle, CURLOPT_SHARE, _share_handle);
 
 	curl_multi_add_handle(_multi_handle, easy_handle);
