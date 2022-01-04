@@ -6,6 +6,7 @@
 - Easier HTTP field setting option
 - Saving cookies to file
 - Quick way to construct a string from form parameters
+- Quick way to read all the content
 
 ### Fixed
 - Cookie share support

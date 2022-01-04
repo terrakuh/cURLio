@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <curl/curl.h>
+#include <string_view>
 #include <utility>
 
 namespace curlio {
@@ -26,6 +27,10 @@ public:
 	void set_url(const char* url) noexcept { curl_easy_setopt(_handle, CURLOPT_URL, url); }
 	void append_http_field(const char* field) noexcept;
 	void set_method(const char* method) noexcept;
+	/// Returns the content length of the response or `-1` if unknown.
+	curl_off_t content_length() noexcept;
+	/// Returns the content type of the response. The string will get freed when `this` dies.
+	std::string_view content_type() noexcept;
 	void set_content_length(curl_off_t length) noexcept
 	{
 		curl_easy_setopt(_handle, CURLOPT_POSTFIELDSIZE_LARGE, length);
@@ -105,6 +110,20 @@ inline void Request::set_method(const char* method) noexcept
 	} else {
 		curl_easy_setopt(_handle, CURLOPT_CUSTOMREQUEST, method);
 	}
+}
+
+inline curl_off_t Request::content_length() noexcept
+{
+	curl_off_t value = -1;
+	curl_easy_getinfo(_handle, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &value);
+	return value;
+}
+
+inline std::string_view Request::content_type() noexcept
+{
+	char* value = nullptr;
+	curl_easy_getinfo(_handle, CURLINFO_CONTENT_TYPE, &value);
+	return { value, value == nullptr ? 0 : std::char_traits<char>::length(value) };
 }
 
 template<typename Token>
