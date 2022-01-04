@@ -40,7 +40,7 @@ private:
 	static int _close_socket(void* self_pointer, curl_socket_t socket) noexcept;
 };
 
-Session::Session(boost::asio::any_io_executor executor) : _timer{ executor }
+inline Session::Session(boost::asio::any_io_executor executor) : _timer{ executor }
 {
 	_multi_handle = curl_multi_init();
 	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETFUNCTION, &_socket_callback);
@@ -53,7 +53,7 @@ Session::Session(boost::asio::any_io_executor executor) : _timer{ executor }
 	curl_share_setopt(_share_handle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
 }
 
-Session::~Session() noexcept
+inline Session::~Session() noexcept
 {
 	if (_multi_handle != nullptr) {
 		curl_multi_cleanup(_multi_handle);
@@ -63,7 +63,7 @@ Session::~Session() noexcept
 	}
 }
 
-void Session::start(Request& request)
+inline void Session::start(Request& request)
 {
 	if (request._executor) {
 		throw std::system_error{ Code::request_in_use };
@@ -80,7 +80,8 @@ void Session::start(Request& request)
 	curl_multi_add_handle(_multi_handle, easy_handle);
 }
 
-void Session::_async_wait(boost::asio::ip::tcp::socket& socket, boost::asio::socket_base::wait_type type)
+inline void Session::_async_wait(boost::asio::ip::tcp::socket& socket,
+                                 boost::asio::socket_base::wait_type type)
 {
 	socket.async_wait(type, [this, type, &socket](boost::system::error_code ec) {
 		if (!ec) {
@@ -101,7 +102,7 @@ void Session::_async_wait(boost::asio::ip::tcp::socket& socket, boost::asio::soc
 	});
 }
 
-void Session::_clean_finished()
+inline void Session::_clean_finished()
 {
 	CURLMsg* message = nullptr;
 	int left         = 0;
@@ -117,8 +118,8 @@ void Session::_clean_finished()
 	}
 }
 
-int Session::_socket_callback(CURL* handle, curl_socket_t socket, int what, void* self_pointer,
-                              void* socket_pointer)
+inline int Session::_socket_callback(CURL* handle, curl_socket_t socket, int what, void* self_pointer,
+                                     void* socket_pointer)
 {
 	const auto self = static_cast<Session*>(self_pointer);
 	const auto it   = self->_sockets.find(socket);
@@ -139,7 +140,7 @@ int Session::_socket_callback(CURL* handle, curl_socket_t socket, int what, void
 	return 0;
 }
 
-int Session::_multi_timer_callback(CURLM* multi, long timeout_ms, void* self_pointer)
+inline int Session::_multi_timer_callback(CURLM* multi, long timeout_ms, void* self_pointer)
 {
 	const auto self = static_cast<Session*>(self_pointer);
 
@@ -160,8 +161,8 @@ int Session::_multi_timer_callback(CURLM* multi, long timeout_ms, void* self_poi
 	return 0;
 }
 
-curl_socket_t Session::_open_socket(void* self_pointer, curlsocktype purpose,
-                                    struct curl_sockaddr* address) noexcept
+inline curl_socket_t Session::_open_socket(void* self_pointer, curlsocktype purpose,
+                                           struct curl_sockaddr* address) noexcept
 {
 	const auto self = static_cast<Session*>(self_pointer);
 	if (purpose == CURLSOCKTYPE_IPCXN) {
@@ -179,7 +180,7 @@ curl_socket_t Session::_open_socket(void* self_pointer, curlsocktype purpose,
 	return CURL_SOCKET_BAD;
 }
 
-int Session::_close_socket(void* self_pointer, curl_socket_t socket) noexcept
+inline int Session::_close_socket(void* self_pointer, curl_socket_t socket) noexcept
 {
 	const auto self = static_cast<Session*>(self_pointer);
 	self->_sockets.erase(socket);

@@ -54,7 +54,7 @@ private:
 	                                   void* self_pointer) noexcept;
 };
 
-Request::Request(CURL* handle) noexcept
+inline Request::Request(CURL* handle) noexcept
 {
 	_handle = handle;
 	if (_handle != nullptr) {
@@ -64,7 +64,7 @@ Request::Request(CURL* handle) noexcept
 	}
 }
 
-Request::~Request() noexcept
+inline Request::~Request() noexcept
 {
 	if (_handle != nullptr) {
 		curl_easy_cleanup(_handle);
@@ -72,7 +72,7 @@ Request::~Request() noexcept
 }
 
 template<typename Token>
-auto Request::async_wait(Token&& token)
+inline auto Request::async_wait(Token&& token)
 {
 	return boost::asio::async_initiate<Token, void(boost::system::error_code)>(
 	  [this](auto handler) {
@@ -92,7 +92,7 @@ auto Request::async_wait(Token&& token)
 }
 
 template<typename Mutable_buffer_sequence, typename Token>
-auto Request::async_read_some(const Mutable_buffer_sequence& buffers, Token&& token)
+inline auto Request::async_read_some(const Mutable_buffer_sequence& buffers, Token&& token)
 {
 	return boost::asio::async_initiate<Token, void(boost::system::error_code, std::size_t)>(
 	  [this, buffers](auto handler) {
@@ -128,7 +128,7 @@ auto Request::async_read_some(const Mutable_buffer_sequence& buffers, Token&& to
 	  token);
 }
 
-void Request::_finish()
+inline void Request::_finish()
 {
 	_finished = true;
 	if (_write_handler) {
@@ -142,8 +142,8 @@ void Request::_finish()
 	_executor = {};
 }
 
-std::size_t Request::_write_callback(void* data, std::size_t size, std::size_t count,
-                                     void* self_pointer) noexcept
+inline std::size_t Request::_write_callback(void* data, std::size_t size, std::size_t count,
+                                            void* self_pointer) noexcept
 {
 	auto self = static_cast<Request*>(self_pointer);
 

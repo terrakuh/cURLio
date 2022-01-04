@@ -7,7 +7,7 @@ foreach(example ${examples})
   add_executable(${name} "${example}")
   target_link_libraries(${name} PRIVATE curlio::curlio Threads::Threads)
   set_target_properties(${name} PROPERTIES CXX_STANDARD 20)
-  
-  # target_compile_options(${name} PUBLIC -fsanitize=address -fno-omit-frame-pointer -O1 -fno-optimize-sibling-calls)
-  # target_link_options(${name} PUBLIC -fsanitize=address)
+
+  # target_compile_options(${name} PUBLIC -fsanitize=address -fno-omit-frame-pointer -O1
+  # -fno-optimize-sibling-calls) target_link_options(${name} PUBLIC -fsanitize=address)
 endforeach()
