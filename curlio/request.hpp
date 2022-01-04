@@ -93,7 +93,7 @@ inline Request::~Request() noexcept
 inline void Request::append_http_field(const char* field) noexcept
 {
 	_headers = curl_slist_append(_headers, field);
-	curl_easy_setopt(_handle, CURLOPT_HTTPHEADER, _headers);
+	curl_easy_setopt(_handle, CURLOPT_HTTPHEADER, _headers.get());
 }
 
 inline void Request::set_method(const char* method) noexcept
