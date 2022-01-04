@@ -3,9 +3,11 @@
 #include "detail/function.hpp"
 #include "detail/mover.hpp"
 #include "error.hpp"
+#include "header.hpp"
 
 #include <boost/asio.hpp>
 #include <cstdio>
+#include <cstring>
 #include <curl/curl.h>
 #include <utility>
 
@@ -23,8 +25,10 @@ public:
 	Request(Request&& move) = default;
 	~Request() noexcept;
 
-	void set_url(const char* url) { curl_easy_setopt(_handle, CURLOPT_URL, url); }
-	void set_content_length(curl_off_t length)
+	void set_url(const char* url) noexcept { curl_easy_setopt(_handle, CURLOPT_URL, url); }
+	void append_http_field(const char* field) noexcept;
+	void set_method(const char* method) noexcept;
+	void set_content_length(curl_off_t length) noexcept
 	{
 		curl_easy_setopt(_handle, CURLOPT_POSTFIELDSIZE_LARGE, length);
 	}
@@ -52,6 +56,7 @@ private:
 	detail::Function<std::size_t(boost::system::error_code, void*, std::size_t)> _read_handler;
 	int _pause_mask = 0;
 	detail::Mover<CURL*> _handle;
+	detail::Mover<curl_slist*> _headers;
 	/// Stores one `_write_callback` call.
 	boost::asio::streambuf _input_buffer;
 	/// This handler is set when an asynchronous action waits for the request to complete.
@@ -82,6 +87,24 @@ inline Request::~Request() noexcept
 {
 	if (_handle != nullptr) {
 		curl_easy_cleanup(_handle);
+		curl_slist_free_all(_headers);
+	}
+}
+
+inline void Request::append_http_field(const char* field) noexcept
+{
+	_headers = curl_slist_append(_headers, field);
+	curl_easy_setopt(_handle, CURLOPT_HTTPHEADER, _headers);
+}
+
+inline void Request::set_method(const char* method) noexcept
+{
+	if (std::strcmp(method, "GET") == 0) {
+		curl_easy_setopt(_handle, CURLOPT_HTTPGET, 1);
+	} else if (std::strcmp(method, "post") == 0) {
+		curl_easy_setopt(_handle, CURLOPT_POST, 1);
+	} else {
+		curl_easy_setopt(_handle, CURLOPT_CUSTOMREQUEST, method);
 	}
 }
 
