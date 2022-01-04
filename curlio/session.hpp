@@ -13,6 +13,8 @@ namespace curlio {
 class Session
 {
 public:
+	typedef boost::asio::any_io_executor executor_type;
+
 	Session(boost::asio::any_io_executor executor);
 	Session(Session&& move) = default;
 	~Session() noexcept;

@@ -10,7 +10,9 @@ enum class Code
 	success,
 
 	multiple_reads,
+	multiple_writes,
 	request_in_use,
+	request_not_active,
 };
 
 enum class Condition
@@ -42,7 +44,9 @@ inline const std::error_category& code_category() noexcept
 			case Code::success: return "success";
 
 			case Code::multiple_reads: return "multiple read operations not allowed";
+			case Code::multiple_writes: return "multiple write operations not allowed";
 			case Code::request_in_use: return "request is already in use";
+			case Code::request_not_active: return "request is not active";
 
 			default: return "(unrecognized error code)";
 			}
