@@ -1,6 +1,6 @@
 #pragma once
 
-#include "detail/mover.hpp"
+#include "detail/curl_share_lock.hpp"
 #include "error.hpp"
 #include "request.hpp"
 
@@ -16,7 +16,7 @@ public:
 	typedef boost::asio::any_io_executor executor_type;
 
 	Session(boost::asio::any_io_executor executor);
-	Session(Session&& move) = default;
+	Session(Session&& move) = delete;
 	~Session() noexcept;
 
 	bool is_valid() const noexcept { return _multi_handle != nullptr; }
@@ -27,8 +27,9 @@ public:
 
 private:
 	boost::asio::steady_timer _timer;
-	detail::Mover<CURLM*> _multi_handle;
-	detail::Mover<CURLSH*> _share_handle;
+	CURLM* _multi_handle  = nullptr;
+	CURLSH* _share_handle = nullptr;
+	detail::CURL_share_lock _share_lock;
 	/// All active connections.
 	std::map<curl_socket_t, boost::asio::ip::tcp::socket> _sockets;
 
@@ -53,6 +54,9 @@ inline Session::Session(boost::asio::any_io_executor executor) : _timer{ executo
 	_share_handle = curl_share_init();
 	curl_share_setopt(_share_handle, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
 	curl_share_setopt(_share_handle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+	curl_share_setopt(_share_handle, CURLSHOPT_LOCKFUNC, &detail::CURL_share_lock::lock);
+	curl_share_setopt(_share_handle, CURLSHOPT_UNLOCKFUNC, &detail::CURL_share_lock::unlock);
+	curl_share_setopt(_share_handle, CURLSHOPT_USERDATA, &_share_lock);
 }
 
 inline Session::~Session() noexcept
@@ -77,7 +81,8 @@ inline void Session::start(Request& request)
 	curl_easy_setopt(easy_handle, CURLOPT_OPENSOCKETDATA, this);
 	curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETFUNCTION, &Session::_close_socket);
 	curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETDATA, this);
-	curl_easy_setopt(easy_handle, CURLOPT_SHARE, _share_handle.get());
+	curl_easy_setopt(easy_handle, CURLOPT_COOKIEFILE, "");
+	curl_easy_setopt(easy_handle, CURLOPT_SHARE, _share_handle);
 
 	curl_multi_add_handle(_multi_handle, easy_handle);
 }

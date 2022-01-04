@@ -1,7 +1,6 @@
 #pragma once
 
 #include "detail/function.hpp"
-#include "detail/mover.hpp"
 #include "error.hpp"
 
 #include <boost/asio.hpp>
@@ -21,7 +20,7 @@ public:
 
 	/// This constructor assumes ownership of the provided handle.
 	Request(CURL* handle = curl_easy_init()) noexcept;
-	Request(Request&& move) = default;
+	Request(Request&& move) = delete;
 	~Request() noexcept;
 
 	void set_url(const char* url) noexcept { curl_easy_setopt(_handle, CURLOPT_URL, url); }
@@ -43,7 +42,7 @@ public:
 	auto async_write_some(const Const_buffer_sequence& buffers, Token&& token);
 	boost::asio::any_io_executor get_executor() noexcept { return _executor; }
 	void swap(Request& other) noexcept;
-	Request& operator=(Request&& move) = default;
+	Request& operator=(Request&& move) = delete;
 
 private:
 	friend Session;
@@ -53,9 +52,9 @@ private:
 	/// This handler is set when an asynchronous action waits for data.
 	detail::Function<void(boost::system::error_code)> _write_handler;
 	detail::Function<std::size_t(boost::system::error_code, void*, std::size_t)> _read_handler;
-	int _pause_mask = 0;
-	detail::Mover<CURL*> _handle;
-	detail::Mover<curl_slist*> _headers;
+	int _pause_mask      = 0;
+	CURL* _handle        = nullptr;
+	curl_slist* _headers = nullptr;
 	/// Stores one `_write_callback` call.
 	boost::asio::streambuf _input_buffer;
 	/// This handler is set when an asynchronous action waits for the request to complete.
@@ -79,6 +78,7 @@ inline Request::Request(CURL* handle) noexcept
 		curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &Request::_read_callback);
 		curl_easy_setopt(_handle, CURLOPT_READDATA, this);
 		curl_easy_setopt(_handle, CURLOPT_PRIVATE, this);
+		curl_easy_setopt(_handle, CURLOPT_ACCEPT_ENCODING, "");
 	}
 }
 
@@ -93,7 +93,7 @@ inline Request::~Request() noexcept
 inline void Request::append_http_field(const char* field) noexcept
 {
 	_headers = curl_slist_append(_headers, field);
-	curl_easy_setopt(_handle, CURLOPT_HTTPHEADER, _headers.get());
+	curl_easy_setopt(_handle, CURLOPT_HTTPHEADER, _headers);
 }
 
 inline void Request::set_method(const char* method) noexcept
