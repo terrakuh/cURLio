@@ -3,9 +3,9 @@
 #include "detail/function.hpp"
 #include "error.hpp"
 
+#include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
 #include <cstdio>
-#include <cstring>
 #include <curl/curl.h>
 #include <string_view>
 #include <utility>
@@ -103,9 +103,10 @@ inline void Request::append_http_field(const char* field) noexcept
 
 inline void Request::set_method(const char* method) noexcept
 {
-	if (std::strcmp(method, "GET") == 0) {
+	std::string_view tmp = method;
+	if (boost::algorithm::iequals(tmp, "get")) {
 		curl_easy_setopt(_handle, CURLOPT_HTTPGET, 1);
-	} else if (std::strcmp(method, "post") == 0) {
+	} else if (boost::algorithm::iequals(tmp, "post")) {
 		curl_easy_setopt(_handle, CURLOPT_POST, 1);
 	} else {
 		curl_easy_setopt(_handle, CURLOPT_CUSTOMREQUEST, method);
@@ -258,7 +259,9 @@ inline std::size_t Request::_read_callback(void* data, std::size_t size, std::si
 	if (self->_read_handler) {
 		const std::size_t copied = self->_read_handler({}, data, size * count);
 		self->_read_handler.reset();
-		return copied;
+		if (copied > 0) {
+			return copied;
+		}
 	}
 	self->_pause_mask |= CURLPAUSE_SEND;
 	return CURL_READFUNC_PAUSE;
