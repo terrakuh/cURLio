@@ -3,7 +3,6 @@
 #include "detail/function.hpp"
 #include "detail/mover.hpp"
 #include "error.hpp"
-#include "header.hpp"
 
 #include <boost/asio.hpp>
 #include <cstdio>
