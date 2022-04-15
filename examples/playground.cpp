@@ -24,36 +24,36 @@ int main(int argc, char** argv)
 	co_spawn(
 	  service,
 	  [&]() -> awaitable<void> {
-		  curlio::Session session{ service.get_executor() };
-		  curlio::Request req{};
-		  req.set_url("http://localhost:8080");
-		  // curl_easy_setopt(req.native_handle(), CURLOPT_VERBOSE, 1L);
-		  curl_easy_setopt(req.native_handle(), CURLOPT_USERAGENT, "curl/7.80.0");
-		  curl_easy_setopt(req.native_handle(), CURLOPT_HEADERFUNCTION, &header_callback);
-		  curl_easy_setopt(req.native_handle(), CURLOPT_POST, 1);
-
-		  session.start(req);
-		  boost::json::object payload;
-		  payload["user"]     = "kartoffel";
-		  payload["password"] = "secret";
-
 		  try {
-			  co_await curlio::async_write_json(req, payload, use_nothrow_awaitable);
-		  } catch (const std::exception& e) {
-			  std::cerr << "Error: " << e.what() << "\n";
-			  co_return;
-		  }
-		  co_await req.async_write_some(null_buffers{}, use_awaitable);
+			  curlio::Session session{ service.get_executor() };
+			  session.set_cookie_file("/tmp/cookme");
+			  printf("session: %p\n", &session);
+			  for (int i = 0; i < 2; ++i) {
+				  curlio::Request req{};
+				  req.set_url("https://git.ayar.eu");
+				  curl_easy_setopt(req.native_handle(), CURLOPT_VERBOSE, 1L);
+				  // curl_easy_setopt(req.native_handle(), CURLOPT_USERAGENT, "curl/7.80.0");
+				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEFILE, "/tmp/cookme");
+				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEJAR, "/tmp/cookme");
 
-		  while (true) {
-			  char buf[4096];
-			  auto [ec, n] = co_await req.async_read_some(buffer(buf), use_nothrow_awaitable);
-			  if (ec == error::eof) {
+				  session.start(req);
+
+				  std::cout << co_await curlio::quick::async_read_all(req, use_awaitable);
+
+				  // while (true) {
+				  //   char buf[4096];
+				  //   auto [ec, n] = co_await req.async_read_some(buffer(buf), use_nothrow_awaitable);
+				  //   if (ec == error::eof) {
+				  // 	  break;
+				  //   }
+				  //   // std::cout.write(buf, n);
+				  // }
+				  co_await req.async_wait(use_awaitable);
 				  break;
 			  }
-			  // std::cout.write(buf, n);
+		  } catch (const std::exception& e) {
+			  std::cerr << "Exception: " << e.what() << "\n";
 		  }
-		  co_await req.async_wait(use_awaitable);
 		  co_return;
 	  },
 	  detached);
