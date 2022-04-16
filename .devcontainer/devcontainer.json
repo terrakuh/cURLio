@@ -10,7 +10,8 @@
 		"ms-vscode.cmake-tools",
 		"cheshirekow.cmake-format",
 		"albert.TabOut",
-		"gruntfuggly.todo-tree"
+		"gruntfuggly.todo-tree",
+		"mhutchie.git-graph"
 	],
 	"runArgs": [
 		"--network=host",

@@ -37,3 +37,7 @@ find_package(curlio REQUIRED)
 
 target_link_libraries(my-target PRIVATE curlio::curlio)
 ```
+
+## Debugging
+
+To enable logging output compile your executable with the definition `CURLIO_ENABLE_LOGGING`.
