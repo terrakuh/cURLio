@@ -2,6 +2,7 @@
 
 #include "detail/function.hpp"
 #include "error.hpp"
+#include "log.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
@@ -83,6 +84,7 @@ inline Request::Request(CURL* handle) noexcept
 		curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &Request::_read_callback);
 		curl_easy_setopt(_handle, CURLOPT_READDATA, this);
 		curl_easy_setopt(_handle, CURLOPT_PRIVATE, this);
+		// enable all encodings
 		curl_easy_setopt(_handle, CURLOPT_ACCEPT_ENCODING, "");
 	}
 }
@@ -236,6 +238,7 @@ inline void Request::_finish()
 inline std::size_t Request::_write_callback(void* data, std::size_t size, std::size_t count,
                                             void* self_pointer) noexcept
 {
+	CURLIO_TRACE("Writing at most " << size * count << " bytes");
 	const auto self = static_cast<Request*>(self_pointer);
 
 	// data is wanted
@@ -254,6 +257,7 @@ inline std::size_t Request::_write_callback(void* data, std::size_t size, std::s
 inline std::size_t Request::_read_callback(void* data, std::size_t size, std::size_t count,
                                            void* self_pointer) noexcept
 {
+	CURLIO_TRACE("Reading up to " << size * count << " bytes");
 	const auto self = static_cast<Request*>(self_pointer);
 
 	if (self->_read_handler) {

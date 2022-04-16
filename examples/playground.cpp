@@ -1,4 +1,3 @@
-
 #include <boost/asio/experimental/as_tuple.hpp>
 #include <boost/json/src.hpp>
 #include <curlio/curlio.hpp>
@@ -27,10 +26,9 @@ int main(int argc, char** argv)
 		  try {
 			  curlio::Session session{ service.get_executor() };
 			  session.set_cookie_file("/tmp/cookme");
-			  printf("session: %p\n", &session);
 			  for (int i = 0; i < 2; ++i) {
 				  curlio::Request req{};
-				  req.set_url("https://git.ayar.eu");
+				  req.set_url("http://example.com");
 				  curl_easy_setopt(req.native_handle(), CURLOPT_VERBOSE, 1L);
 				  // curl_easy_setopt(req.native_handle(), CURLOPT_USERAGENT, "curl/7.80.0");
 				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEFILE, "/tmp/cookme");
@@ -58,6 +56,7 @@ int main(int argc, char** argv)
 	  },
 	  detached);
 
+	std::cout << "Service running with cURL version: " << curl_version() << "\n";
 	service.run();
 	curl_global_cleanup();
 }
