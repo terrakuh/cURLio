@@ -15,4 +15,4 @@
 - Cookie share support
 
 [Unreleased]: https://github.com/terrakuh/curlio/compare/v0.2..dev
-[v0.2]: https://github.com/terrakuh/curlio/compare/v0.1..master
+[v0.2]: https://github.com/terrakuh/curlio/compare/v0.1..v0.2
