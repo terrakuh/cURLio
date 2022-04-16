@@ -98,6 +98,10 @@ inline void Session::start(Request& request)
 	curl_easy_setopt(easy_handle, CURLOPT_SHARE, _share_handle);
 
 	curl_multi_add_handle(_multi_handle, easy_handle);
+
+	int running = 0;
+	curl_multi_socket_action(_multi_handle, CURL_SOCKET_TIMEOUT, 0, &running);
+	CURLIO_DEBUG("Kick-off timeout. Running=" << running);
 }
 
 inline void Session::_async_wait(boost::asio::ip::tcp::socket& socket,
