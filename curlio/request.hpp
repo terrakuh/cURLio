@@ -4,10 +4,13 @@
 #include "error.hpp"
 #include "log.hpp"
 
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
 #include <cstdio>
 #include <curl/curl.h>
+#include <map>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -39,9 +42,11 @@ public:
 	bool is_valid() const noexcept { return _handle != nullptr; }
 	bool is_active() const noexcept { return is_valid() && static_cast<bool>(_executor); }
 	CURL* native_handle() noexcept { return _handle; }
+	template<typename Token>
+	auto async_await_headers(Token&& token);
 	/// Waits until the request is complete. Data must be read before this function.
 	template<typename Token>
-	auto async_wait(Token&& token);
+	auto async_await_completion(Token&& token);
 	template<typename Mutable_buffer_sequence, typename Token>
 	auto async_read_some(const Mutable_buffer_sequence& buffers, Token&& token);
 	template<typename Const_buffer_sequence, typename Token>
@@ -53,26 +58,38 @@ public:
 private:
 	friend Session;
 
+	enum Status
+	{
+		finished         = 0x1,
+		headers_received = 0x2,
+	};
+
 	/// Set to the session's executor.
 	boost::asio::any_io_executor _executor;
+	std::map<std::string, std::string> _response_headers;
+	detail::Function<void(boost::system::error_code)> _headers_received_handler;
 	/// This handler is set when an asynchronous action waits for data.
 	detail::Function<void(boost::system::error_code)> _write_handler;
 	detail::Function<std::size_t(boost::system::error_code, void*, std::size_t)> _read_handler;
-	int _pause_mask      = 0;
-	CURL* _handle        = nullptr;
-	curl_slist* _headers = nullptr;
+	int _pause_mask             = 0;
+	CURL* _handle               = nullptr;
+	curl_slist* _output_headers = nullptr;
 	/// Stores one `_write_callback` call.
 	boost::asio::streambuf _input_buffer;
 	/// This handler is set when an asynchronous action waits for the request to complete.
 	detail::Function<void()> _finish_handler;
-	bool _finished = false;
+	/// Contains status information about this request.
+	int _status = 0;
 
+	void _start();
 	/// Marks this request as finished.
 	void _finish();
 	static std::size_t _write_callback(void* data, std::size_t size, std::size_t count,
 	                                   void* self_pointer) noexcept;
 	static std::size_t _read_callback(void* data, std::size_t size, std::size_t count,
 	                                  void* self_pointer) noexcept;
+	static std::size_t _header_callback(char* buffer, std::size_t size, std::size_t count,
+	                                    void* self_pointer) noexcept;
 };
 
 inline Request::Request(CURL* handle) noexcept
@@ -83,6 +100,8 @@ inline Request::Request(CURL* handle) noexcept
 		curl_easy_setopt(_handle, CURLOPT_WRITEDATA, this);
 		curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &Request::_read_callback);
 		curl_easy_setopt(_handle, CURLOPT_READDATA, this);
+		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, &Request::_header_callback);
+		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, this);
 		curl_easy_setopt(_handle, CURLOPT_PRIVATE, this);
 		// enable all encodings
 		curl_easy_setopt(_handle, CURLOPT_ACCEPT_ENCODING, "");
@@ -93,14 +112,14 @@ inline Request::~Request() noexcept
 {
 	if (_handle != nullptr) {
 		curl_easy_cleanup(_handle);
-		curl_slist_free_all(_headers);
+		curl_slist_free_all(_output_headers);
 	}
 }
 
 inline void Request::append_http_field(const char* field) noexcept
 {
-	_headers = curl_slist_append(_headers, field);
-	curl_easy_setopt(_handle, CURLOPT_HTTPHEADER, _headers);
+	_output_headers = curl_slist_append(_output_headers, field);
+	curl_easy_setopt(_handle, CURLOPT_HTTPHEADER, _output_headers);
 }
 
 inline void Request::set_method(const char* method) noexcept
@@ -118,7 +137,9 @@ inline void Request::set_method(const char* method) noexcept
 inline curl_off_t Request::content_length() noexcept
 {
 	curl_off_t value = -1;
-	curl_easy_getinfo(_handle, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &value);
+	if (curl_easy_getinfo(_handle, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &value) != CURLE_OK) {
+		return -1;
+	}
 	return value;
 }
 
@@ -130,12 +151,35 @@ inline std::string_view Request::content_type() noexcept
 }
 
 template<typename Token>
-inline auto Request::async_wait(Token&& token)
+inline auto Request::async_await_headers(Token&& token)
 {
 	return boost::asio::async_initiate<Token, void(boost::system::error_code)>(
 	  [this](auto handler) {
-		  if (_finished) {
+		  if (_status & headers_received) {
 			  std::move(handler)(boost::system::error_code{});
+		  } else if (_headers_received_handler) {
+			  std::move(handler)(Code::multiple_headers_awaitings);
+		  } else {
+			  _headers_received_handler = [this,
+			                               handler = std::move(handler)](boost::system::error_code ec) mutable {
+				  auto executor = boost::asio::get_associated_executor(handler);
+				  boost::asio::post(executor,
+				                    [handler = std::move(handler), ec]() mutable { std::move(handler)(ec); });
+			  };
+		  }
+	  },
+	  token);
+}
+
+template<typename Token>
+inline auto Request::async_await_completion(Token&& token)
+{
+	return boost::asio::async_initiate<Token, void(boost::system::error_code)>(
+	  [this](auto handler) {
+		  if (_status & finished) {
+			  std::move(handler)(boost::system::error_code{});
+		  } else if (_finish_handler) {
+			  std::move(handler)(Code::multiple_completion_awaitings);
 		  } else {
 			  _finish_handler = [this, handler = std::move(handler)]() mutable {
 				  _finish();
@@ -152,6 +196,7 @@ inline auto Request::async_wait(Token&& token)
 template<typename Mutable_buffer_sequence, typename Token>
 inline auto Request::async_read_some(const Mutable_buffer_sequence& buffers, Token&& token)
 {
+	CURLIO_TRACE("Reading some");
 	return boost::asio::async_initiate<Token, void(boost::system::error_code, std::size_t)>(
 	  [this, buffers](auto handler) {
 		  // can immediately finish
@@ -161,7 +206,7 @@ inline auto Request::async_read_some(const Mutable_buffer_sequence& buffers, Tok
 			  std::move(handler)(boost::system::error_code{}, copied);
 		  } else if (_write_handler) {
 			  std::move(handler)(Code::multiple_reads, 0);
-		  } else if (_finished) {
+		  } else if (_status & finished) {
 			  std::move(handler)(boost::asio::error::eof, 0);
 		  } else {
 			  // set write handler when cURL calls the write callback
@@ -171,6 +216,7 @@ inline auto Request::async_read_some(const Mutable_buffer_sequence& buffers, Tok
 				  if (!ec) {
 					  copied = boost::asio::buffer_copy(buffers, _input_buffer.data());
 					  _input_buffer.consume(copied);
+					  CURLIO_DEBUG("Read " << copied << " bytes");
 				  }
 				  auto executor = boost::asio::get_associated_executor(handler);
 				  boost::asio::post(executor, [handler = std::move(handler), ec, copied]() mutable {
@@ -194,7 +240,7 @@ inline auto Request::async_write_some(const Const_buffer_sequence& buffers, Toke
 		  // can immediately finish
 		  if (_read_handler) {
 			  std::move(handler)(Code::multiple_writes, 0);
-		  } else if (_finished) {
+		  } else if (_status & finished) {
 			  std::move(handler)(boost::asio::error::eof, 0);
 		  } else {
 			  // set write handler when cURL calls the write callback
@@ -217,9 +263,16 @@ inline auto Request::async_write_some(const Const_buffer_sequence& buffers, Toke
 	  token);
 }
 
+inline void Request::_start() { _status = 0; }
+
 inline void Request::_finish()
 {
-	_finished = true;
+	CURLIO_DEBUG("Request " << this << " finished");
+	_status |= finished;
+	if (_headers_received_handler) {
+		_headers_received_handler(boost::asio::error::eof);
+		_headers_received_handler.reset();
+	}
 	if (_write_handler) {
 		_write_handler(boost::asio::error::eof);
 		_write_handler.reset();
@@ -238,7 +291,7 @@ inline void Request::_finish()
 inline std::size_t Request::_write_callback(void* data, std::size_t size, std::size_t count,
                                             void* self_pointer) noexcept
 {
-	CURLIO_TRACE("Writing at most " << size * count << " bytes");
+	CURLIO_TRACE("Receiving callback with buffer size of " << size * count << " bytes");
 	const auto self = static_cast<Request*>(self_pointer);
 
 	// data is wanted
@@ -246,10 +299,13 @@ inline std::size_t Request::_write_callback(void* data, std::size_t size, std::s
 		const std::size_t copied = boost::asio::buffer_copy(self->_input_buffer.prepare(size * count),
 		                                                    boost::asio::buffer(data, size * count));
 		self->_input_buffer.commit(copied);
+		CURLIO_DEBUG("Received " << copied << " bytes");
 		self->_write_handler({});
 		self->_write_handler.reset();
 		return copied;
 	}
+
+	CURLIO_TRACE("Pausing receiving function");
 	self->_pause_mask |= CURLPAUSE_RECV;
 	return CURL_WRITEFUNC_PAUSE;
 }
@@ -257,18 +313,49 @@ inline std::size_t Request::_write_callback(void* data, std::size_t size, std::s
 inline std::size_t Request::_read_callback(void* data, std::size_t size, std::size_t count,
                                            void* self_pointer) noexcept
 {
-	CURLIO_TRACE("Reading up to " << size * count << " bytes");
+	CURLIO_TRACE("Sending callback with buffer size of " << size * count << " bytes");
 	const auto self = static_cast<Request*>(self_pointer);
 
 	if (self->_read_handler) {
 		const std::size_t copied = self->_read_handler({}, data, size * count);
 		self->_read_handler.reset();
 		if (copied > 0) {
+			CURLIO_DEBUG("Sending " << copied << " bytes");
 			return copied;
 		}
 	}
+
+	CURLIO_TRACE("Pausing sending function");
 	self->_pause_mask |= CURLPAUSE_SEND;
 	return CURL_READFUNC_PAUSE;
+}
+
+inline std::size_t Request::_header_callback(char* buffer, std::size_t size, std::size_t count,
+                                             void* self_pointer) noexcept
+{
+	CURLIO_TRACE("Received " << size * count << " bytes of header data");
+	const auto self = static_cast<Request*>(self_pointer);
+
+	if (const char* seperator = std::find(buffer, buffer + size * count, ':');
+	    seperator != buffer + size * count) {
+		std::string key{ buffer, static_cast<std::size_t>(seperator - buffer) };
+		std::string value{ seperator + 1, static_cast<std::size_t>(buffer + size * count - seperator - 1) };
+		boost::algorithm::trim(value);
+		self->_response_headers.insert({ std::move(key), std::move(value) });
+	}
+
+	if (size * count == 2) {
+		puts("hihihihihi");
+		// signal that all headers were received
+		self->_status = headers_received;
+		if (self->_headers_received_handler) {
+			CURLIO_TRACE("Signaling headers received");
+			self->_headers_received_handler({});
+			self->_headers_received_handler.reset();
+		}
+	}
+
+	return size * count;
 }
 
 } // namespace curlio

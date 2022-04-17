@@ -1,3 +1,5 @@
+// #define CURLIO_ENABLE_LOGGING
+
 #include <boost/asio/experimental/as_tuple.hpp>
 #include <boost/json/src.hpp>
 #include <curlio/curlio.hpp>
@@ -28,15 +30,19 @@ int main(int argc, char** argv)
 			  session.set_cookie_file("/tmp/cookme");
 			  for (int i = 0; i < 2; ++i) {
 				  curlio::Request req{};
-				  req.set_url("http://example.com");
-				  curl_easy_setopt(req.native_handle(), CURLOPT_VERBOSE, 1L);
+				  req.set_url("http://google.de");
+				  // curl_easy_setopt(req.native_handle(), CURLOPT_VERBOSE, 1L);
 				  // curl_easy_setopt(req.native_handle(), CURLOPT_USERAGENT, "curl/7.80.0");
 				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEFILE, "/tmp/cookme");
 				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEJAR, "/tmp/cookme");
 
 				  session.start(req);
 
+					co_await req.async_await_headers(use_awaitable);
+					std::cout << "Headers received\n";
+
 				  std::cout << co_await curlio::quick::async_read_all(req, use_awaitable);
+					std::cout << "\nRead all data\n";
 
 				  // while (true) {
 				  //   char buf[4096];
@@ -46,7 +52,7 @@ int main(int argc, char** argv)
 				  //   }
 				  //   // std::cout.write(buf, n);
 				  // }
-				  co_await req.async_wait(use_awaitable);
+				  co_await req.async_await_completion(use_awaitable);
 				  break;
 			  }
 		  } catch (const std::exception& e) {

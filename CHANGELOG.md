@@ -1,6 +1,11 @@
 # Change Log
 
 ## [Unreleased]
+### Added
+- Waiting for headers
+
+### Changed
+- Function `async_wait()` renamed to `async_await_completion()`
 
 ## [v0.2]
 ### Added

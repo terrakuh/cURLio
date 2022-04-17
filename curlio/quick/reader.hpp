@@ -55,6 +55,7 @@ inline auto async_read_all(Request& request, Token&& token)
 		  if (const auto length = request.content_length(); length < 0) {
 			  async_read_all<512>(request, std::move(handler));
 		  } else {
+				CURLIO_DEBUG("Content length for reading " << length);
 			  auto str = std::make_unique<std::string>();
 			  str->resize(static_cast<std::size_t>(length));
 			  auto buffer   = boost::asio::buffer(*str);
@@ -63,6 +64,7 @@ inline auto async_read_all(Request& request, Token&& token)
 			    request, buffer,
 			    boost::asio::bind_executor(executor, [handler = std::move(handler), str = std::move(str)](
 			                                           boost::system::error_code ec, std::size_t bytes_read) mutable {
+																									 CURLIO_DEBUG("Done so" << bytes_read);
 				    str->resize(bytes_read);
 				    std::move(handler)(ec, std::move(*str));
 			    }));

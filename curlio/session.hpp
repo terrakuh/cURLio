@@ -107,14 +107,13 @@ inline void Session::start(Request& request)
 inline void Session::_async_wait(boost::asio::ip::tcp::socket& socket,
                                  boost::asio::socket_base::wait_type type)
 {
+	CURLIO_TRACE("Waiting for socket");
 	socket.async_wait(type, [this, type, &socket](boost::system::error_code ec) {
 		if (!ec) {
 			const auto handle = socket.native_handle();
 			int still_running = 0;
-			curl_multi_socket_action(_multi_handle, handle,
-			                         type == boost::asio::socket_base::wait_read ? CURL_POLL_IN : CURL_POLL_OUT,
-			                         &still_running);
-			_clean_finished();
+			curl_multi_socket_action(_multi_handle, handle, 0, &still_running);
+			// _clean_finished();
 			if (still_running <= 0) {
 				_timer.cancel();
 			}
