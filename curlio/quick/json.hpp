@@ -2,6 +2,7 @@
 
 #include "../error.hpp"
 #include "../request.hpp"
+#include "../response.hpp"
 
 #include <array>
 #include <boost/asio.hpp>
@@ -47,18 +48,18 @@ inline auto async_write_json(Request& request, const boost::json::value& value, 
  * Reads a JSON object from the stream. Bytes read after the JSON are discarded. The handler signature is
  * `void(boost::system::error_code, boost::json::value)`.
  *
- * @pre `request.is_active() == true`
- * @param request This object must live as long as this operation is running.
+ * @pre `response.is_active() == true`
+ * @param response This object must live as long as this operation is running.
  */
 template<typename Token>
-inline auto async_read_json(Request& request, Token&& token)
+inline auto async_read_json(Response& response, Token&& token)
 {
-	if (!request.is_active()) {
+	if (!response.is_active()) {
 		throw boost::system::system_error{ Code::request_not_active };
 	}
 
 	return boost::asio::async_compose<Token, void(boost::system::error_code, boost::json::value)>(
-	  [&request, parser = std::make_unique<boost::json::stream_parser>(),
+	  [&response, parser = std::make_unique<boost::json::stream_parser>(),
 	   buffer = std::array<char, BOOST_JSON_STACK_BUFFER_SIZE>{}](auto& self, boost::system::error_code ec = {},
 	                                                              std::size_t bytes_written = 0) mutable {
 		  if (bytes_written > 0) {
@@ -69,10 +70,10 @@ inline auto async_read_json(Request& request, Token&& token)
 		  } else if (parser->done()) {
 			  self.complete(boost::system::error_code{}, parser.release());
 		  } else {
-			  request.async_read_some(boost::asio::buffer(buffer), std::move(self));
+			  response.async_read_some(boost::asio::buffer(buffer), std::move(self));
 		  }
 	  },
-	  token, request);
+	  token, response);
 }
 
 } // namespace curlio::quick

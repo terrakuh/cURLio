@@ -15,6 +15,7 @@ enum class Code
 	multiple_completion_awaitings,
 	request_in_use,
 	request_not_active,
+	bad_url,
 };
 
 enum class Condition
@@ -51,6 +52,7 @@ inline const std::error_category& code_category() noexcept
 			case Code::multiple_completion_awaitings: return "multiple completion await operations not allowed";
 			case Code::request_in_use: return "request is already in use";
 			case Code::request_not_active: return "request is not active";
+			case Code::bad_url: return "bad URL";
 
 			default: return "(unrecognized error code)";
 			}

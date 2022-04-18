@@ -6,6 +6,7 @@
 
 ### Changed
 - Function `async_wait()` renamed to `async_await_completion()`
+- Split logic into `Request` and `Response` classes
 
 ## [v0.2]
 ### Added
