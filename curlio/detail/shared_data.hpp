@@ -10,7 +10,7 @@ namespace curlio::detail {
 enum Status
 {
 	finished         = 0x1,
-	headers_finished = 0x2,
+	// headers_finished = 0x2,
 };
 
 /// Contains data shared between Request and Response.

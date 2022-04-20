@@ -30,20 +30,28 @@ int main(int argc, char** argv)
 			  session.set_cookie_file("/tmp/cookme");
 			  for (int i = 0; i < 2; ++i) {
 				  curlio::Request req{};
-				  req.set_url("https://www.google.de");
-				  curl_easy_setopt(req.native_handle(), CURLOPT_VERBOSE, 1L);
-					// curl_easy_setopt(req.native_handle(), CURLOPT_FOLLOWLOCATION, 1L);
+				  req.set_url("https://cloud.ayar.eu");
+				  // curl_easy_setopt(req.native_handle(), CURLOPT_VERBOSE, 1L);
+				  curl_easy_setopt(req.native_handle(), CURLOPT_FOLLOWLOCATION, 1L);
 				  // curl_easy_setopt(req.native_handle(), CURLOPT_USERAGENT, "curl/7.80.0");
 				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEFILE, "/tmp/cookme");
 				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEJAR, "/tmp/cookme");
 
 				  auto resp = session.start(req);
 
-					co_await resp->async_await_headers(use_awaitable);
-					std::cout << "Headers received\n";
+				  // steady_timer timer{service};
+				  // timer.expires_after(std::chrono::minutes{3});
+				  // co_await timer.async_wait(use_awaitable);
+				  // std::cout << "Done with artifical timeout\n";
 
-				  std::cout << co_await curlio::quick::async_read_all(*resp, use_awaitable);
-					std::cout << "\nRead all data\n";
+				  do {
+					  co_await resp->async_await_headers(use_awaitable);
+						std::cout << "=======RECEIVED HEADER======\n";
+				  } while (resp->is_redirect());
+				  std::cout << "Final headers received\n";
+
+				  co_await curlio::quick::async_read_all(*resp, use_awaitable);
+				  std::cout << "\nRead all data\n";
 
 				  // while (true) {
 				  //   char buf[4096];
