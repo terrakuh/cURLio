@@ -24,7 +24,7 @@ class Response
 public:
 	typedef boost::asio::any_io_executor executor_type;
 
-	Response(Response&& move) = delete;
+	Response(Response&& move) noexcept;
 	~Response() noexcept;
 
 	/// Returns the content length of the response or `-1` if unknown.
@@ -52,7 +52,7 @@ public:
 	auto async_read_some(const Mutable_buffer_sequence& buffers, Token&& token);
 	/// Getting the executor of an invalid response is undefined behavior.
 	boost::asio::any_io_executor get_executor() noexcept { return _data.lock()->executor; }
-	Response& operator=(Response&& move) = delete;
+	Response& operator=(Response&& move) noexcept;
 
 private:
 	friend Session;
@@ -69,6 +69,21 @@ private:
 	static std::size_t _receive_callback(void* data, std::size_t size, std::size_t count,
 	                                     void* self_pointer) noexcept;
 };
+
+inline Response::Response(Response&& move) noexcept : Response{ move._data.lock() }
+{
+	move._data.reset();
+	std::swap(_header_collector, move._header_collector);
+	std::swap(_receive_handler, move._receive_handler);
+	std::swap(_finish_handler, move._finish_handler);
+
+	const auto buffer = move._input_buffer.data();
+	if (buffer.size() != 0) {
+		const auto copied = boost::asio::buffer_copy(_input_buffer.prepare(buffer.size()), buffer);
+		_input_buffer.commit(copied);
+		move._input_buffer.consume(copied);
+	}
+}
 
 inline Response::~Response() noexcept
 {
@@ -178,23 +193,32 @@ inline auto Response::async_read_some(const Mutable_buffer_sequence& buffers, To
 	  token);
 }
 
+inline Response& Response::operator=(Response&& move) noexcept
+{
+	this->~Response();
+	new (this) Response{ std::move(move) };
+	return *this;
+}
+
 inline Response::Response(const std::shared_ptr<detail::Shared_data>& data) noexcept : _data{ data }
 {
-	curl_easy_setopt(data->handle, CURLOPT_WRITEFUNCTION, &Response::_receive_callback);
-	curl_easy_setopt(data->handle, CURLOPT_WRITEDATA, this);
-	_header_collector.hook(data->handle);
-	data->response_finisher = [this] {
-		CURLIO_TRACE("Response " << this << " finished");
-		_header_collector.finish();
-		if (_receive_handler) {
-			_receive_handler(boost::asio::error::eof);
-			_receive_handler.reset();
-		}
-		if (_finish_handler) {
-			_finish_handler();
-			_finish_handler.reset();
-		}
-	};
+	if (data != nullptr) {
+		curl_easy_setopt(data->handle, CURLOPT_WRITEFUNCTION, &Response::_receive_callback);
+		curl_easy_setopt(data->handle, CURLOPT_WRITEDATA, this);
+		_header_collector.hook(data->handle);
+		data->response_finisher = [this] {
+			CURLIO_TRACE("Response " << this << " finished");
+			_header_collector.finish();
+			if (_receive_handler) {
+				_receive_handler(boost::asio::error::eof);
+				_receive_handler.reset();
+			}
+			if (_finish_handler) {
+				_finish_handler();
+				_finish_handler.reset();
+			}
+		};
+	}
 }
 
 inline std::size_t Response::_receive_callback(void* data, std::size_t size, std::size_t count,

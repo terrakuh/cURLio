@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Added
 - Waiting for headers
+- Move operations for `Request` and `Response`
 
 ### Changed
 - Function `async_wait()` renamed to `async_await_completion()`

@@ -25,7 +25,7 @@ public:
 
 	bool is_valid() const noexcept { return _multi_handle != nullptr; }
 	/// Starts the request. Make sure all data is read and the request is awaited.
-	CURLIO_NO_DISCARD std::unique_ptr<Response> start(Request& request);
+	CURLIO_NO_DISCARD Response start(Request& request);
 	void set_cookie_file(std::string file) { _cookie_file = file; }
 	boost::asio::any_io_executor get_executor() noexcept { return _timer.get_executor(); }
 	Session& operator=(Session&& move) = delete;
@@ -86,7 +86,7 @@ inline Session::~Session() noexcept
 	}
 }
 
-inline std::unique_ptr<Response> Session::start(Request& request)
+inline Response Session::start(Request& request)
 {
 	if (!request.is_valid() || request.is_active()) {
 		throw std::system_error{ Code::request_in_use };
@@ -109,7 +109,7 @@ inline std::unique_ptr<Response> Session::start(Request& request)
 	}
 	curl_easy_setopt(handle, CURLOPT_SHARE, _share_handle);
 
-	std::unique_ptr<Response> response{ new Response{ data } };
+	Response response{  data };
 	_active_requests.insert({ data.get(), std::move(data) });
 
 	curl_multi_add_handle(_multi_handle, handle);

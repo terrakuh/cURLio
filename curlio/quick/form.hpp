@@ -10,7 +10,7 @@
 namespace curlio::quick {
 
 /// Constructs a query parameter list from the given associative container (like `std::map`).
-template<typename Associative_container>
+template<typename Associative_container = std::map<std::string, std::string>>
 inline std::string construct_form(CURL* handle, const Associative_container& parameters) noexcept
 {
 	std::stringstream ss;
