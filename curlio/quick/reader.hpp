@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../error.hpp"
-#include "../request.hpp"
+#include "../response.hpp"
 
 #include <boost/asio.hpp>
 #include <memory>
@@ -40,32 +40,35 @@ inline auto async_read_all(Async_read_stream& stream, Token&& token)
  * Reads the content from the given stream into a string.The handler signature is
  * `void(boost::system::error_code, std::string)`.
  *
- * @pre `request.is_active() == true`
- * @param request This object must live as long as this operation is running.
+ * @pre `response.is_active() == true`
+ * @param response This object must live as long as this operation is running.
  */
 template<typename Token>
-inline auto async_read_all(Request& request, Token&& token)
+inline auto async_read_all(Response& response, Token&& token)
 {
-	if (!request.is_active()) {
+	if (!response.is_active()) {
 		throw boost::system::system_error{ Code::request_not_active };
 	}
 
 	return boost::asio::async_initiate<Token, void(boost::system::error_code, std::string)>(
-	  [&request](auto handler) {
-		  if (const auto length = request.content_length(); length < 0) {
-			  async_read_all<512>(request, std::move(handler));
+	  [&response](auto handler) {
+		  const auto length = response.content_length();
+		  CURLIO_DEBUG("Content length for reading " << length);
+		  if (length < 0) {
+			  async_read_all<512>(response, std::move(handler));
 		  } else {
 			  auto str = std::make_unique<std::string>();
 			  str->resize(static_cast<std::size_t>(length));
 			  auto buffer   = boost::asio::buffer(*str);
-			  auto executor = boost::asio::get_associated_executor(handler, request.get_executor());
-			  boost::asio::async_read(
-			    request, buffer,
-			    boost::asio::bind_executor(executor, [handler = std::move(handler), str = std::move(str)](
-			                                           boost::system::error_code ec, std::size_t bytes_read) mutable {
-				    str->resize(bytes_read);
-				    std::move(handler)(ec, std::move(*str));
-			    }));
+			  auto executor = boost::asio::get_associated_executor(handler, response.get_executor());
+			  boost::asio::async_read(response, buffer,
+			                          boost::asio::bind_executor(
+			                            executor, [handler = std::move(handler), str = std::move(str)](
+			                                        boost::system::error_code ec, std::size_t bytes_read) mutable {
+				                            CURLIO_DEBUG("Done so" << bytes_read);
+				                            str->resize(bytes_read);
+				                            std::move(handler)(ec, std::move(*str));
+			                            }));
 		  }
 	  },
 	  token);

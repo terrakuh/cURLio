@@ -11,8 +11,12 @@ enum class Code
 
 	multiple_reads,
 	multiple_writes,
+	multiple_headers_awaitings,
+	multiple_completion_awaitings,
 	request_in_use,
 	request_not_active,
+	bad_url,
+	no_response_code,
 };
 
 enum class Condition
@@ -45,8 +49,12 @@ inline const std::error_category& code_category() noexcept
 
 			case Code::multiple_reads: return "multiple read operations not allowed";
 			case Code::multiple_writes: return "multiple write operations not allowed";
+			case Code::multiple_headers_awaitings: return "multiple header await operations not allowed";
+			case Code::multiple_completion_awaitings: return "multiple completion await operations not allowed";
 			case Code::request_in_use: return "request is already in use";
 			case Code::request_not_active: return "request is not active";
+			case Code::bad_url: return "bad URL";
+			case Code::no_response_code: return "no response code available";
 
 			default: return "(unrecognized error code)";
 			}
