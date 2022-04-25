@@ -19,15 +19,15 @@ class Session
 public:
 	typedef boost::asio::any_io_executor executor_type;
 
-	Session(boost::asio::any_io_executor executor);
+	Session(boost::asio::any_io_executor executor) noexcept;
 	Session(Session&& move) = delete;
 	~Session() noexcept;
 
 	bool is_valid() const noexcept { return _multi_handle != nullptr; }
 	/// Starts the request. Make sure all data is read and the request is awaited.
 	CURLIO_NO_DISCARD Response start(Request& request);
-	void set_cookie_file(std::string file) { _cookie_file = file; }
-	boost::asio::any_io_executor get_executor() noexcept { return _timer.get_executor(); }
+	void set_cookie_file(std::string file) { _cookie_file = std::move(file); }
+	boost::asio::any_io_executor get_executor() noexcept { return _strand; }
 	Session& operator=(Session&& move) = delete;
 
 private:
@@ -38,6 +38,7 @@ private:
 		bool watch_write = false;
 	};
 
+	boost::asio::strand<boost::asio::any_io_executor> _strand;
 	boost::asio::steady_timer _timer;
 	CURLM* _multi_handle  = nullptr;
 	CURLSH* _share_handle = nullptr;
@@ -49,18 +50,19 @@ private:
 	std::map<detail::Shared_data*, std::shared_ptr<detail::Shared_data>> _active_requests;
 
 	/// Call Request::_finish() for every finished request and remove it from the multi-handle.
-	void _clean_finished();
+	void _clean_finished() noexcept;
 	void _async_wait(boost::asio::ip::tcp::socket& socket, boost::asio::socket_base::wait_type type);
 	static int _socket_callback(CURL* handle, curl_socket_t socket, int what, void* self_pointer,
-	                            void* socket_pointer);
-	static int _multi_timer_callback(CURLM* multi, long timeout_ms, void* self_pointer);
+	                            void* socket_pointer) noexcept;
+	static int _multi_timer_callback(CURLM* multi, long timeout_ms, void* self_pointer) noexcept;
 	/// Called by cURL to open a new connection.
 	static curl_socket_t _open_socket(void* self_pointer, curlsocktype purpose,
 	                                  struct curl_sockaddr* address) noexcept;
 	static int _close_socket(void* self_pointer, curl_socket_t socket) noexcept;
 };
 
-inline Session::Session(boost::asio::any_io_executor executor) : _timer{ executor }
+inline Session::Session(boost::asio::any_io_executor executor) noexcept
+    : _strand{ executor }, _timer{ _strand }
 {
 	_multi_handle = curl_multi_init();
 	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETFUNCTION, &_socket_callback);
@@ -93,9 +95,9 @@ inline Response Session::start(Request& request)
 	}
 
 	CURLIO_DEBUG("Starting request " << &request);
-	auto data          = std::move(request._owner);
-	const auto handle  = data->handle;
-	data->executor     = get_executor();
+	auto data         = std::move(request._owner);
+	const auto handle = data->handle;
+	data->executor    = get_executor();
 
 	curl_easy_setopt(handle, CURLOPT_OPENSOCKETFUNCTION, &Session::_open_socket);
 	curl_easy_setopt(handle, CURLOPT_OPENSOCKETDATA, this);
@@ -109,7 +111,7 @@ inline Response Session::start(Request& request)
 	}
 	curl_easy_setopt(handle, CURLOPT_SHARE, _share_handle);
 
-	Response response{  data };
+	Response response{ data };
 	_active_requests.insert({ data.get(), std::move(data) });
 
 	curl_multi_add_handle(_multi_handle, handle);
@@ -119,7 +121,7 @@ inline Response Session::start(Request& request)
 	return response;
 }
 
-inline void Session::_clean_finished()
+inline void Session::_clean_finished() noexcept
 {
 	CURLIO_TRACE("Cleaning finished requests");
 	CURLMsg* message = nullptr;
@@ -162,7 +164,7 @@ inline void Session::_async_wait(boost::asio::ip::tcp::socket& socket,
 }
 
 inline int Session::_socket_callback(CURL* handle, curl_socket_t socket, int what, void* self_pointer,
-                                     void* socket_pointer)
+                                     void* socket_pointer) noexcept
 {
 	constexpr const char* what_names[] = { "IN", "OUT", "IN/OUT", "REMOVE" };
 	CURLIO_TRACE(
@@ -198,7 +200,7 @@ inline int Session::_socket_callback(CURL* handle, curl_socket_t socket, int wha
 	return 0;
 }
 
-inline int Session::_multi_timer_callback(CURLM* multi, long timeout_ms, void* self_pointer)
+inline int Session::_multi_timer_callback(CURLM* multi, long timeout_ms, void* self_pointer) noexcept
 {
 	CURLIO_DEBUG("Starting timeout with " << timeout_ms << " ms");
 	const auto self = static_cast<Session*>(self_pointer);
@@ -238,6 +240,7 @@ inline curl_socket_t Session::_open_socket(void* self_pointer, curlsocktype purp
 				return fd;
 			}
 		}
+		// TODO add IPv6 support
 	}
 	CURLIO_ERROR("Failed to open socket. Purpose=" << purpose << ", family=" << address->family);
 	return CURL_SOCKET_BAD;

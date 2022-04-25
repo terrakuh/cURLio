@@ -4,6 +4,7 @@
 ### Added
 - Waiting for headers
 - Move operations for `Request` and `Response`
+- Synchronize `Session` with `boost::asio::strand`
 
 ### Changed
 - Function `async_wait()` renamed to `async_await_completion()`
