@@ -1,6 +1,8 @@
 # Change Log
 
-## [Unreleased]
+## [v0.3.1]
+### Fixed
+- Remove easy handle before destruction
 
 ## [v0.3] - 2022-04-25
 ### Added
@@ -24,6 +26,7 @@
 ### Fixed
 - Cookie share support
 
-[Unreleased]: https://github.com/terrakuh/curlio/compare/v0.3..dev
+[Unreleased]: https://github.com/terrakuh/curlio/compare/v0.3.1..dev
+[v0.3.1]: https://github.com/terrakuh/curlio/compare/v0.3..v0.3.1
 [v0.3]: https://github.com/terrakuh/curlio/compare/v0.2..v0.3
 [v0.2]: https://github.com/terrakuh/curlio/compare/v0.1..v0.2

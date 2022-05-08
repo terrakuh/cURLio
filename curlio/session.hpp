@@ -129,11 +129,11 @@ inline void Session::_clean_finished() noexcept
 	while ((message = curl_multi_info_read(_multi_handle, &left))) {
 		if (message->msg == CURLMSG_DONE) {
 			detail::Shared_data* data = nullptr;
+			curl_multi_remove_handle(_multi_handle, message->easy_handle);
 			if (curl_easy_getinfo(message->easy_handle, CURLINFO_PRIVATE, &data) == CURLE_OK && data != nullptr) {
 				CURLIO_DEBUG("Request " << data << " is done");
 				_active_requests.erase(data);
 			}
-			curl_multi_remove_handle(_multi_handle, message->easy_handle);
 		}
 	}
 }
