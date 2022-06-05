@@ -149,8 +149,8 @@ inline void Session::_async_wait(boost::asio::ip::tcp::socket& socket,
 		const int mask    = (type == boost::asio::socket_base::wait_read ? CURL_CSELECT_IN : CURL_CSELECT_OUT) |
 		                 (ec ? CURL_CSELECT_ERR : 0);
 		const auto code = curl_multi_socket_action(_multi_handle, handle, mask, &still_running);
-		CURLIO_ERROR("====================" << curl_multi_strerror(code));
 		if (code != CURLM_OK) {
+			CURLIO_ERROR("Socket action: " << curl_multi_strerror(code));
 		}
 		_clean_finished();
 

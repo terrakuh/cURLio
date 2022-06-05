@@ -1,5 +1,9 @@
 # Change Log
 
+## [v0.3.2]
+### Fixed
+- Post completion handlers for execution instead of direct invocation
+
 ## [v0.3.1]
 ### Fixed
 - Remove easy handle before destruction
@@ -26,7 +30,8 @@
 ### Fixed
 - Cookie share support
 
-[Unreleased]: https://github.com/terrakuh/curlio/compare/v0.3.1..dev
+[Unreleased]: https://github.com/terrakuh/curlio/compare/v0.3.2..dev
+[v0.3.2]: https://github.com/terrakuh/curlio/compare/v0.3.1..v0.3.2
 [v0.3.1]: https://github.com/terrakuh/curlio/compare/v0.3..v0.3.1
 [v0.3]: https://github.com/terrakuh/curlio/compare/v0.2..v0.3
 [v0.2]: https://github.com/terrakuh/curlio/compare/v0.1..v0.2

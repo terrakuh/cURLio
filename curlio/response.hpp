@@ -133,16 +133,18 @@ inline auto Response::async_await_completion(Token&& token)
 	return boost::asio::async_initiate<Token, void(boost::system::error_code)>(
 	  [this](auto handler) {
 		  const auto ptr = _data.lock();
+		  auto executor  = boost::asio::get_associated_executor(handler, ptr->executor);
 		  if (ptr == nullptr || ptr->status & detail::finished) {
-			  std::move(handler)(boost::system::error_code{});
+			  boost::asio::post(executor,
+			                    [handler = std::move(handler)]() mutable { handler(boost::system::error_code{}); });
 		  } else if (_finish_handler) {
-			  std::move(handler)(Code::multiple_completion_awaitings);
+			  boost::asio::post(executor, [handler = std::move(handler)]() mutable {
+				  handler(Code::multiple_completion_awaitings);
+			  });
 		  } else {
-			  _finish_handler = [handler = std::move(handler)]() mutable {
-				  auto executor = boost::asio::get_associated_executor(handler);
-				  boost::asio::post(executor, [handler = std::move(handler)]() mutable {
-					  std::move(handler)(boost::system::error_code{});
-				  });
+			  _finish_handler = [handler = std::move(handler), executor]() mutable {
+				  boost::asio::post(
+				    executor, [handler = std::move(handler)]() mutable { handler(boost::system::error_code{}); });
 			  };
 		  }
 	  },
@@ -156,19 +158,24 @@ inline auto Response::async_read_some(const Mutable_buffer_sequence& buffers, To
 	return boost::asio::async_initiate<Token, void(boost::system::error_code, std::size_t)>(
 	  [this, buffers](auto handler) {
 		  const auto ptr = _data.lock();
+		  auto executor  = boost::asio::get_associated_executor(handler, ptr->executor);
 
 		  // can immediately finish
 		  if (_input_buffer.size() > 0) {
 			  const std::size_t copied = boost::asio::buffer_copy(buffers, _input_buffer.data());
 			  _input_buffer.consume(copied);
-			  std::move(handler)(boost::system::error_code{}, copied);
+			  boost::asio::post(executor, [copied, handler = std::move(handler)]() mutable {
+				  handler(boost::system::error_code{}, copied);
+			  });
 		  } else if (_receive_handler) {
-			  std::move(handler)(Code::multiple_reads, 0);
+			  boost::asio::post(
+			    executor, [handler = std::move(handler)]() mutable { handler(boost::system::error_code{}, 0); });
 		  } else if (ptr == nullptr || ptr->status & detail::finished) {
-			  std::move(handler)(boost::asio::error::eof, 0);
+			  boost::asio::post(executor,
+			                    [handler = std::move(handler)]() mutable { handler(boost::asio::error::eof, 0); });
 		  } else {
 			  // set write handler when cURL calls the write callback
-			  _receive_handler = [this, buffers,
+			  _receive_handler = [this, buffers, executor = ptr->executor,
 			                      handler = std::move(handler)](boost::system::error_code ec) mutable {
 				  std::size_t copied = 0;
 				  // copy data and finish
@@ -177,10 +184,8 @@ inline auto Response::async_read_some(const Mutable_buffer_sequence& buffers, To
 					  _input_buffer.consume(copied);
 					  CURLIO_DEBUG("Read " << copied << " bytes");
 				  }
-				  auto executor = boost::asio::get_associated_executor(handler);
-				  boost::asio::post(executor, [handler = std::move(handler), ec, copied]() mutable {
-					  std::move(handler)(ec, copied);
-				  });
+				  boost::asio::post(executor,
+				                    [handler = std::move(handler), ec, copied]() mutable { handler(ec, copied); });
 			  };
 
 			  // TODO check for errors
