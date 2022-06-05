@@ -11,6 +11,7 @@
 #include <cctype>
 #include <cstdio>
 #include <curl/curl.h>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -124,26 +125,22 @@ template<typename Const_buffer_sequence, typename Token>
 inline auto Request::async_write_some(const Const_buffer_sequence& buffers, Token&& token)
 {
 	return boost::asio::async_initiate<Token, void(boost::system::error_code, std::size_t)>(
-	  [this, buffers](auto handler) {
+	  [this, buffers](auto&& handler) {
 		  const auto ptr = _data.lock();
 		  auto executor  = boost::asio::get_associated_executor(handler, ptr->executor);
 
 		  // can immediately finish
 		  if (ptr == nullptr || ptr->status & detail::finished) {
-			  boost::asio::post(executor,
-			                    [handler = std::move(handler)]() mutable { handler(boost::asio::error::eof, 0); });
+			  boost::asio::post(executor, std::bind(std::move(handler), boost::asio::error::eof, 0));
 		  } else if (_send_handler) {
-			  boost::asio::post(executor,
-			                    [handler = std::move(handler)]() mutable { handler(Code::multiple_writes, 0); });
+			  boost::asio::post(executor, std::bind(std::move(handler), Code::multiple_writes, 0));
 		  } else {
 			  // set write handler when cURL calls the write callback
-			  _send_handler = [this, buffers, handler = std::move(handler), executor = ptr->executor](
-			                    boost::system::error_code ec, void* data, std::size_t size) mutable {
+			  _send_handler = [this, buffers, handler = std::move(handler),
+			                   executor](boost::system::error_code ec, void* data, std::size_t size) mutable {
 				  // copy data and finish
 				  const std::size_t copied = boost::asio::buffer_copy(boost::asio::buffer(data, size), buffers);
-				  boost::asio::post(executor, [handler = std::move(handler), ec, copied]() mutable {
-					  std::move(handler)(ec, copied);
-				  });
+				  boost::asio::post(executor, std::bind(std::move(handler), ec, copied));
 				  return copied;
 			  };
 
