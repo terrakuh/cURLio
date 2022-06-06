@@ -7,15 +7,13 @@
 
 namespace curlio::detail {
 
-enum Status
-{
-	finished         = 0x1,
+enum Status {
+	finished = 0x1,
 	// headers_finished = 0x2,
 };
 
 /// Contains data shared between Request and Response.
-class Shared_data
-{
+class Shared_data {
 public:
 	boost::asio::any_io_executor executor;
 	CURL* const handle = curl_easy_init();

@@ -14,8 +14,7 @@
 
 namespace curlio {
 
-class Session
-{
+class Session {
 public:
 	typedef boost::asio::any_io_executor executor_type;
 
@@ -31,8 +30,7 @@ public:
 	Session& operator=(Session&& move) = delete;
 
 private:
-	struct Socket_info
-	{
+	struct Socket_info {
 		boost::asio::ip::tcp::socket socket;
 		bool watch_read  = false;
 		bool watch_write = false;
@@ -145,10 +143,10 @@ inline void Session::_async_wait(boost::asio::ip::tcp::socket& socket,
 	socket.async_wait(type, [this, type, handle](boost::system::error_code ec) {
 		CURLIO_TRACE("Socket action=" << (type == boost::asio::socket_base::wait_read ? "READ" : "WRITE")
 		                              << " ec=" << ec.what());
-		int still_running = 0;
-		const int mask    = (type == boost::asio::socket_base::wait_read ? CURL_CSELECT_IN : CURL_CSELECT_OUT) |
+		const int mask = (type == boost::asio::socket_base::wait_read ? CURL_CSELECT_IN : CURL_CSELECT_OUT) |
 		                 (ec ? CURL_CSELECT_ERR : 0);
-		const auto code = curl_multi_socket_action(_multi_handle, handle, mask, &still_running);
+		int still_running = 0;
+		const auto code   = curl_multi_socket_action(_multi_handle, handle, mask, &still_running);
 		if (code != CURLM_OK) {
 			CURLIO_ERROR("Socket action: " << curl_multi_strerror(code));
 		}
@@ -219,6 +217,7 @@ inline int Session::_multi_timer_callback(CURLM* multi, long timeout_ms, void* s
 			}
 		}
 	});
+	CURLIO_DEBUG("Exiting multi timer");
 
 	return 0;
 }

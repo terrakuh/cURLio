@@ -22,8 +22,7 @@ namespace curlio {
 
 class Session;
 
-class Request
-{
+class Request {
 public:
 	typedef boost::asio::any_io_executor executor_type;
 

@@ -5,8 +5,7 @@
 
 namespace curlio {
 
-enum class Code
-{
+enum class Code {
 	success,
 
 	multiple_reads,
@@ -19,8 +18,7 @@ enum class Code
 	no_response_code,
 };
 
-enum class Condition
-{
+enum class Condition {
 	success,
 	usage,
 };
@@ -29,8 +27,7 @@ std::error_condition make_error_condition(Condition condition) noexcept;
 
 inline const std::error_category& code_category() noexcept
 {
-	static class : public std::error_category
-	{
+	static class : public std::error_category {
 	public:
 		const char* name() const noexcept override { return "curlio"; }
 		std::error_condition default_error_condition(int code) const noexcept override
@@ -65,8 +62,7 @@ inline const std::error_category& code_category() noexcept
 
 inline const std::error_category& condition_category() noexcept
 {
-	static class : public std::error_category
-	{
+	static class : public std::error_category {
 	public:
 		const char* name() const noexcept override { return "curlio"; }
 		std::string message(int condition) const override
@@ -96,11 +92,9 @@ inline std::error_condition make_error_condition(Condition condition) noexcept
 namespace std {
 
 template<>
-struct is_error_code_enum<curlio::Code> : true_type
-{};
+struct is_error_code_enum<curlio::Code> : true_type {};
 
 template<>
-struct is_error_condition_enum<curlio::Condition> : true_type
-{};
+struct is_error_condition_enum<curlio::Condition> : true_type {};
 
 } // namespace std

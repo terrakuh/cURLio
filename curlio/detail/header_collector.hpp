@@ -13,8 +13,7 @@
 
 namespace curlio::detail {
 
-struct Insensitive_less
-{
+struct Insensitive_less {
 	bool operator()(const std::string& lhs, const std::string& rhs) const noexcept
 	{
 		if (lhs.size() < rhs.size()) {
@@ -37,8 +36,7 @@ struct Insensitive_less
 
 /// Hooks into the header callbacks of cURL and parses the header fields. Hook management must be done
 /// separately.
-class Header_collector
-{
+class Header_collector {
 public:
 	typedef std::map<std::string, std::string, Insensitive_less> Fields;
 

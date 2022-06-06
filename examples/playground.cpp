@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 
 				  do {
 					  co_await resp.async_await_headers(use_awaitable);
-						std::cout << "=======RECEIVED HEADER======\n";
+					  std::cout << "=======RECEIVED HEADER======\n";
 				  } while (resp.is_redirect());
 				  std::cout << "Final headers received\n";
 

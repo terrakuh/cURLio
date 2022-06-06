@@ -6,8 +6,7 @@
 
 namespace curlio::detail {
 
-class CURL_share_lock
-{
+class CURL_share_lock {
 public:
 	void lock(CURL* handle, curl_lock_data data, curl_lock_access access, void* self_pointer) noexcept
 	{

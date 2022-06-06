@@ -20,8 +20,7 @@ namespace curlio {
 
 class Session;
 
-class Response
-{
+class Response {
 public:
 	typedef boost::asio::any_io_executor executor_type;
 
@@ -170,7 +169,8 @@ inline auto Response::async_read_some(const Mutable_buffer_sequence& buffers, To
 			  boost::asio::post(executor, std::bind(std::move(handler), boost::asio::error::eof, 0));
 		  } else {
 			  // set write handler when cURL calls the write callback
-			  _receive_handler = [this, buffers, executor=ptr->executor,
+			  // TODO figure out why it works with this executor for large downloads with multiple threads
+			  _receive_handler = [this, buffers, executor = ptr->executor,
 			                      handler = std::move(handler)](boost::system::error_code ec) mutable {
 				  std::size_t copied = 0;
 				  // copy data and finish
