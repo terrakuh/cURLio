@@ -81,7 +81,7 @@ inline void Request::set_url(const char* url)
 {
 	_lazy_init();
 	if (curl_easy_setopt(native_handle(), CURLOPT_URL, url) != CURLE_OK) {
-		throw std::system_error{ Code::bad_url };
+		throw boost::system::system_error{ Code::bad_url };
 	}
 }
 
@@ -130,9 +130,9 @@ inline auto Request::async_write_some(const Const_buffer_sequence& buffers, Toke
 
 		  // can immediately finish
 		  if (ptr == nullptr || ptr->status & detail::finished) {
-			  boost::asio::post(executor, std::bind(std::move(handler), boost::asio::error::eof, 0));
+			  boost::asio::post(executor, std::bind(std::move(handler), make_error_code(boost::asio::error::eof), 0));
 		  } else if (_send_handler) {
-			  boost::asio::post(executor, std::bind(std::move(handler), Code::multiple_writes, 0));
+			  boost::asio::post(executor, std::bind(std::move(handler), make_error_code(Code::multiple_writes), 0));
 		  } else {
 			  // set write handler when cURL calls the write callback
 			  _send_handler = [this, buffers, handler = std::move(handler),
@@ -144,8 +144,12 @@ inline auto Request::async_write_some(const Const_buffer_sequence& buffers, Toke
 			  };
 
 			  // TODO check for errors
-			  ptr->pause_mask &= ~CURLPAUSE_SEND;
-			  curl_easy_pause(ptr->handle, ptr->pause_mask);
+			  boost::asio::dispatch(ptr->executor, [ptr] {
+				  if ((ptr->pause_mask & CURLPAUSE_SEND) == CURLPAUSE_SEND) {
+					  ptr->pause_mask &= ~CURLPAUSE_SEND;
+					  curl_easy_pause(ptr->handle, ptr->pause_mask);
+				  }
+			  });
 		  }
 	  },
 	  token);

@@ -36,6 +36,7 @@ private:
 		bool watch_write = false;
 	};
 
+	/// Everything related to the multi handle is run synchronized.
 	boost::asio::strand<boost::asio::any_io_executor> _strand;
 	boost::asio::steady_timer _timer;
 	CURLM* _multi_handle  = nullptr;
@@ -89,7 +90,7 @@ inline Session::~Session() noexcept
 inline Response Session::start(Request& request)
 {
 	if (!request.is_valid() || request.is_active()) {
-		throw std::system_error{ Code::request_in_use };
+		throw boost::system::system_error{ Code::request_in_use };
 	}
 
 	CURLIO_DEBUG("Starting request " << &request);
@@ -112,9 +113,11 @@ inline Response Session::start(Request& request)
 	Response response{ data };
 	_active_requests.insert({ data.get(), std::move(data) });
 
-	curl_multi_add_handle(_multi_handle, handle);
 	// kickstart
-	_multi_timer_callback(_multi_handle, 0, this);
+	boost::asio::post(_strand, [this, handle] {
+		curl_multi_add_handle(_multi_handle, handle);
+		_multi_timer_callback(_multi_handle, 0, this);
+	});
 
 	return response;
 }

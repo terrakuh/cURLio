@@ -8,6 +8,7 @@
 #include <boost/asio.hpp>
 #include <cctype>
 #include <curl/curl.h>
+#include <functional>
 #include <map>
 #include <string>
 
@@ -40,16 +41,19 @@ class Header_collector {
 public:
 	typedef std::map<std::string, std::string, Insensitive_less> Fields;
 
+	Header_collector(boost::asio::any_io_executor executor) : _executor{ std::move(executor) } {}
 	Fields& fields() noexcept { return _fields; }
 	const Fields& fields() const noexcept { return _fields; }
 	void hook(CURL* handle) noexcept;
 	void unhook(CURL* handle) noexcept;
 	void finish();
+	boost::asio::any_io_executor get_executor() { return _executor; }
 	/// Waits until the header received flag is set. Clears it before completion.
 	template<typename Token>
 	auto async_await_headers(Token&& token);
 
 private:
+	boost::asio::any_io_executor _executor;
 	Fields _fields;
 	std::uint8_t _last_clear       = 0;
 	std::uint8_t _headers_received = 0;
@@ -84,21 +88,22 @@ template<typename Token>
 inline auto Header_collector::async_await_headers(Token&& token)
 {
 	return boost::asio::async_initiate<Token, void(boost::system::error_code)>(
-	  [this](auto handler) {
+	  [this](auto&& handler) {
+		  auto executor = boost::asio::get_associated_executor(handler, _executor);
+
 		  // already received
 		  if (_ready_to_await) {
 			  _ready_to_await = false;
-			  std::move(handler)(boost::system::error_code{});
+			  boost::asio::post(executor, std::bind(std::move(handler), boost::system::error_code{}));
 		  } else if (_headers_received_handler) {
-			  std::move(handler)(Code::multiple_headers_awaitings);
+			  boost::asio::post(executor,
+			                    std::bind(std::move(handler), make_error_code(Code::multiple_headers_awaitings)));
 		  } // need to wait
 		  else {
-			  _headers_received_handler = [this,
+			  _headers_received_handler = [this, executor,
 			                               handler = std::move(handler)](boost::system::error_code ec) mutable {
 				  _ready_to_await = false;
-				  auto executor   = boost::asio::get_associated_executor(handler);
-				  boost::asio::post(executor,
-				                    [handler = std::move(handler), ec]() mutable { std::move(handler)(ec); });
+				  boost::asio::post(executor, std::bind(std::move(handler), ec));
 			  };
 		  }
 	  },

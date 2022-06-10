@@ -4,6 +4,7 @@
 #include <boost/json/src.hpp>
 #include <curlio/curlio.hpp>
 #include <iostream>
+#include <thread>
 
 using namespace boost::asio;
 
@@ -27,43 +28,34 @@ int main(int argc, char** argv)
 	  [&]() -> awaitable<void> {
 		  try {
 			  curlio::Session session{ service.get_executor() };
-			  session.set_cookie_file("/tmp/cookme");
-			  for (int i = 0; i < 2; ++i) {
-				  curlio::Request req{};
-				  req.set_url("https://example.com");
-				  // curl_easy_setopt(req.native_handle(), CURLOPT_VERBOSE, 1L);
-				  curl_easy_setopt(req.native_handle(), CURLOPT_FOLLOWLOCATION, 1L);
-				  // curl_easy_setopt(req.native_handle(), CURLOPT_USERAGENT, "curl/7.80.0");
-				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEFILE, "/tmp/cookme");
-				  // curl_easy_setopt(req.native_handle(), CURLOPT_COOKIEJAR, "/tmp/cookme");
+			  curlio::Request req{};
+			  req.set_url("http://localhost:8083/kartoffel.bin");
+			  auto resp = session.start(req);
 
-				  auto resp = session.start(req);
+			  // steady_timer timer{service};
+			  // timer.expires_after(std::chrono::minutes{3});
+			  // co_await timer.async_wait(use_awaitable);
+			  // std::cout << "Done with artifical timeout\n";
 
-				  // steady_timer timer{service};
-				  // timer.expires_after(std::chrono::minutes{3});
-				  // co_await timer.async_wait(use_awaitable);
-				  // std::cout << "Done with artifical timeout\n";
+			  do {
+				  co_await resp.async_await_next_headers(use_awaitable);
+				  std::cout << "=======RECEIVED HEADER======\n";
+			  } while (resp.is_redirect());
+			  std::cout << "Final headers received\n";
 
-				  do {
-					  co_await resp.async_await_headers(use_awaitable);
-					  std::cout << "=======RECEIVED HEADER======\n";
-				  } while (resp.is_redirect());
-				  std::cout << "Final headers received\n";
+			  // co_await curlio::quick::async_read_all(resp, use_awaitable);
+			  // std::cout << "\nRead all data\n";
 
-				  co_await curlio::quick::async_read_all(resp, use_awaitable);
-				  std::cout << "\nRead all data\n";
-
-				  // while (true) {
-				  //   char buf[4096];
-				  //   auto [ec, n] = co_await req.async_read_some(buffer(buf), use_nothrow_awaitable);
-				  //   if (ec == error::eof) {
-				  // 	  break;
-				  //   }
-				  //   // std::cout.write(buf, n);
-				  // }
-				  co_await resp.async_await_completion(use_awaitable);
-				  break;
+			  while (true) {
+				  char buf[4096];
+				  auto [ec, n] = co_await resp.async_read_some(buffer(buf), use_nothrow_awaitable);
+				  if (ec == error::eof) {
+					  break;
+				  }
+				  // std::cout.write(buf, n);
 			  }
+				std::cout << "Done reading\n";
+			  co_await resp.async_await_completion(use_awaitable);
 		  } catch (const std::exception& e) {
 			  std::cerr << "Exception: " << e.what() << "\n";
 		  }
@@ -72,6 +64,8 @@ int main(int argc, char** argv)
 	  detached);
 
 	std::cout << "Service running with cURL version: " << curl_version() << "\n";
+	std::thread t{ [&] { service.run(); } };
 	service.run();
+	t.join();
 	curl_global_cleanup();
 }
