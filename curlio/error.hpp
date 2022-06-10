@@ -1,3 +1,8 @@
+/**
+ * @file
+ *
+ * Error codes and conditions.
+ */
 #pragma once
 
 #include <boost/system.hpp>

@@ -1,3 +1,8 @@
+/**
+ * @file
+ *
+ * Convenience function to read all the response body to a `std::string`.
+ */
 #pragma once
 
 #include "../error.hpp"

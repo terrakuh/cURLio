@@ -1,3 +1,8 @@
+/**
+ * @file
+ *
+ * Convenience function for form generation.
+ */
 #pragma once
 
 #include <boost/asio.hpp>

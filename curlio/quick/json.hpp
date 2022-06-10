@@ -1,3 +1,8 @@
+/**
+ * @file
+ * 
+ * Quicky parse the request body as JSON or write to the response.
+ */
 #pragma once
 
 #include "../error.hpp"

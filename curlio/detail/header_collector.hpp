@@ -39,21 +39,22 @@ struct Insensitive_less {
 /// separately.
 class Header_collector {
 public:
+	typedef boost::asio::any_io_executor executor_type;
 	typedef std::map<std::string, std::string, Insensitive_less> Fields;
 
-	Header_collector(boost::asio::any_io_executor executor) : _executor{ std::move(executor) } {}
+	Header_collector(executor_type executor) : _executor{ std::move(executor) } {}
 	Fields& fields() noexcept { return _fields; }
 	const Fields& fields() const noexcept { return _fields; }
 	void hook(CURL* handle) noexcept;
 	void unhook(CURL* handle) noexcept;
 	void finish();
-	boost::asio::any_io_executor get_executor() { return _executor; }
+	executor_type get_executor() { return _executor; }
 	/// Waits until the header received flag is set. Clears it before completion.
 	template<typename Token>
 	auto async_await_headers(Token&& token);
 
 private:
-	boost::asio::any_io_executor _executor;
+	executor_type _executor;
 	Fields _fields;
 	std::uint8_t _last_clear       = 0;
 	std::uint8_t _headers_received = 0;

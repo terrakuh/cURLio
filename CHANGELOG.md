@@ -1,6 +1,7 @@
 # Change Log
 
-## [v0.3.3]
+<h2><a href="https://github.com/terrakuh/curlio/compare/v0.3.2..v0.3.3">v0.3.3</a> - 2022-06-10</h2>
+
 ### Added
 - Convenience function to await all headers
 - Simple example
@@ -13,15 +14,18 @@
 - Completion handlers with ambiguous signature
 - Header collector synchronization
 
-## [v0.3.2]
+<h2><a href="https://github.com/terrakuh/curlio/compare/v0.3.1..v0.3.2">v0.3.2</a></h2>
+
 ### Fixed
 - Post completion handlers for execution instead of direct invocation
 
-## [v0.3.1]
+<h2><a href="https://github.com/terrakuh/curlio/compare/v0.3..v0.3.1">v0.3.1</a></h2>
+
 ### Fixed
 - Remove easy handle before destruction
 
-## [v0.3] - 2022-04-25
+<h2><a href="https://github.com/terrakuh/curlio/compare/v0.2..v0.3">v0.3</a> - 2022-04-25</h2>
+
 ### Added
 - Waiting for headers
 - Move operations for `Request` and `Response`
@@ -31,7 +35,8 @@
 - Function `async_wait()` renamed to `async_await_completion()`
 - Split logic into `Request` and `Response` classes
 
-## [v0.2]
+<h2><a href="https://github.com/terrakuh/curlio/compare/v0.1..v0.2">v0.2</a></h2>
+
 ### Added
 - JSON writer and reader
 - Easier HTTP field setting option
@@ -42,10 +47,3 @@
 
 ### Fixed
 - Cookie share support
-
-[Unreleased]: https://github.com/terrakuh/curlio/compare/v0.3.3..dev
-[v0.3.3]: https://github.com/terrakuh/curlio/compare/v0.3.2..v0.3.3
-[v0.3.2]: https://github.com/terrakuh/curlio/compare/v0.3.1..v0.3.2
-[v0.3.1]: https://github.com/terrakuh/curlio/compare/v0.3..v0.3.1
-[v0.3]: https://github.com/terrakuh/curlio/compare/v0.2..v0.3
-[v0.2]: https://github.com/terrakuh/curlio/compare/v0.1..v0.2
