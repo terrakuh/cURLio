@@ -1,0 +1,10 @@
+<map id="curlio/error.hpp" name="curlio/error.hpp">
+<area shape="rect" id="node1" title="Error codes and conditions." alt="" coords="179,5,299,32"/>
+<area shape="rect" id="node2" href="$curlio_8hpp_source.html" title=" " alt="" coords="307,304,433,331"/>
+<area shape="rect" id="node3" href="$json_8hpp.html" title="Quicky parse the request body as JSON or write to the response." alt="" coords="224,155,380,181"/>
+<area shape="rect" id="node5" href="$reader_8hpp.html" title="Convenience function to read all the response body to a std::string." alt="" coords="29,155,199,181"/>
+<area shape="rect" id="node6" href="$request_8hpp_source.html" title=" " alt="" coords="394,80,533,107"/>
+<area shape="rect" id="node7" href="$session_8hpp_source.html" title=" " alt="" coords="405,155,543,181"/>
+<area shape="rect" id="node8" href="$response_8hpp_source.html" title=" " alt="" coords="221,80,370,107"/>
+<area shape="rect" id="node4" href="$quick_8hpp_source.html" title=" " alt="" coords="239,229,365,256"/>
+</map>
