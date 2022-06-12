@@ -40,11 +40,22 @@ public:
 	bool is_active() const noexcept { return is_valid(); }
 	CURL* native_handle() noexcept;
 	detail::Header_collector::Fields& header_fields() noexcept { return _header_collector.fields(); }
+	/// Waits for the next header segment. Check with is_redirect() if another header segment follows.
 	template<typename Token>
 	auto async_await_next_headers(Token&& token)
 	{
 		return _header_collector.async_await_headers(std::forward<Token>(token));
 	}
+	/**
+	 * Waits for the last header that is not a redirect.
+	 * 
+	 * Effectively does:
+	 * @code
+	 * do {
+	 *   co_await async_await_next_headers(use_awaitable);
+	 * } while (is_redirect());
+	 * @endcode
+	*/
 	template<typename Token>
 	auto async_await_last_headers(Token&& token);
 	/// Waits until the response is complete. Data must be read before this function.

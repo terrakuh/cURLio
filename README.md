@@ -28,8 +28,7 @@ cmake --install curlio/build
 And then in your `CMakeLists.txt`:
 
 ```cmake
-find_package(curlio 0.3 REQUIRED)
-
+find_package(curlio 0.3.3 REQUIRED)
 target_link_libraries(my-target PRIVATE curlio::curlio)
 ```
 

@@ -32,6 +32,8 @@ public:
 
 	void set_url(const char* url);
 	void append_http_field(const char* field);
+	/// Sets the HTTP request method. Special support is provided for `GET` and `POST`. Any other values are set
+	/// via `CURLOPT_CUSTOMREQUEST`.
 	void set_method(const char* method);
 	void set_content_length(curl_off_t length);
 	bool is_valid() const noexcept { return !_data.expired(); }
@@ -130,7 +132,8 @@ inline auto Request::async_write_some(const Const_buffer_sequence& buffers, Toke
 
 		  // can immediately finish
 		  if (ptr == nullptr || ptr->status & detail::finished) {
-			  boost::asio::post(executor, std::bind(std::move(handler), make_error_code(boost::asio::error::eof), 0));
+			  boost::asio::post(executor,
+			                    std::bind(std::move(handler), make_error_code(boost::asio::error::eof), 0));
 		  } else if (_send_handler) {
 			  boost::asio::post(executor, std::bind(std::move(handler), make_error_code(Code::multiple_writes), 0));
 		  } else {

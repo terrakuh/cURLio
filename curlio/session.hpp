@@ -14,11 +14,25 @@
 
 namespace curlio {
 
+/**
+ * Manages all cURL requests. The requests in one session run in concurrenlty but not in parallel.
+ *
+ * @code
+ * curlio::Session session{ service.get_executor() };
+ * curlio::Request req{};
+ * req.set_url("http://example.com");
+ * 
+ * auto resp = session.start(req);
+ * co_await resp.async_await_last_headers(use_awaitable);
+ * const std::string content = co_await curlio::quick::async_read_all(resp, use_awaitable);
+ * co_await resp.async_await_completion(use_awaitable);
+  * @endcode
+ */
 class Session {
 public:
 	typedef boost::asio::any_io_executor executor_type;
 
-	Session(boost::asio::any_io_executor executor) noexcept;
+	Session(executor_type executor) noexcept;
 	Session(Session&& move) = delete;
 	~Session() noexcept;
 
@@ -26,7 +40,7 @@ public:
 	/// Starts the request. Make sure all data is read and the request is awaited.
 	CURLIO_NO_DISCARD Response start(Request& request);
 	void set_cookie_file(std::string file) { _cookie_file = std::move(file); }
-	boost::asio::any_io_executor get_executor() noexcept { return _strand; }
+	executor_type get_executor() noexcept { return _strand; }
 	Session& operator=(Session&& move) = delete;
 
 private:
@@ -37,7 +51,7 @@ private:
 	};
 
 	/// Everything related to the multi handle is run synchronized.
-	boost::asio::strand<boost::asio::any_io_executor> _strand;
+	boost::asio::strand<executor_type> _strand;
 	boost::asio::steady_timer _timer;
 	CURLM* _multi_handle  = nullptr;
 	CURLSH* _share_handle = nullptr;

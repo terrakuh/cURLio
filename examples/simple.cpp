@@ -1,3 +1,6 @@
+/**
+ * @example
+*/
 #include <boost/asio.hpp>
 #include <boost/json/src.hpp>
 #include <curlio/curlio.hpp>
