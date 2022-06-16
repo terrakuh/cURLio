@@ -25,6 +25,9 @@
 var NAVTREE =
 [
   [ "cURLio", "index.html", [
+    [ "Example", "index.html#autotoc_md11", null ],
+    [ "Installation", "index.html#autotoc_md12", null ],
+    [ "Debugging", "index.html#autotoc_md13", null ],
     [ "Change Log", "md__c_h_a_n_g_e_l_o_g.html", null ],
     [ "Classes", "annotated.html", [
       [ "Class List", "annotated.html", "annotated_dup" ],

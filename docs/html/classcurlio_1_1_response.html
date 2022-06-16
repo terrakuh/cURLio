@@ -1,3 +1,4 @@
+<!-- HTML header for doxygen 1.9.3-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -19,6 +20,15 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
+<link href="doxygen-awesome-sidebar-only-darkmode-toggle.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript" src="doxygen-awesome-fragment-copy-button.js"></script>
+<script type="text/javascript" src="doxygen-awesome-paragraph-link.js"></script>
+<script type="text/javascript">
+	DoxygenAwesomeDarkModeToggle.init()
+	DoxygenAwesomeFragmentCopyButton.init()
+	DoxygenAwesomeParagraphLink.init()
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -121,9 +131,11 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a79adeb18462a1e022d109c7bda8f5137"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adb29d23a4836b87ec7320f606eecf568"><td class="memTemplParams" colspan="2">template&lt;typename Token &gt; </td></tr>
 <tr class="memitem:adb29d23a4836b87ec7320f606eecf568"><td class="memTemplItemLeft" align="right" valign="top">auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classcurlio_1_1_response.html#adb29d23a4836b87ec7320f606eecf568">async_await_next_headers</a> (Token &amp;&amp;token)</td></tr>
+<tr class="memdesc:adb29d23a4836b87ec7320f606eecf568"><td class="mdescLeft">&#160;</td><td class="mdescRight">Waits for the next header segment. Check with is_redirect() if another header segment follows.  <a href="classcurlio_1_1_response.html#adb29d23a4836b87ec7320f606eecf568">More...</a><br /></td></tr>
 <tr class="separator:adb29d23a4836b87ec7320f606eecf568"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a26564e8370bd5b232da4749387ef269d"><td class="memTemplParams" colspan="2">template&lt;typename Token &gt; </td></tr>
 <tr class="memitem:a26564e8370bd5b232da4749387ef269d"><td class="memTemplItemLeft" align="right" valign="top">auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classcurlio_1_1_response.html#a26564e8370bd5b232da4749387ef269d">async_await_last_headers</a> (Token &amp;&amp;token)</td></tr>
+<tr class="memdesc:a26564e8370bd5b232da4749387ef269d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Waits for the last header that is not a redirect.  <a href="classcurlio_1_1_response.html#a26564e8370bd5b232da4749387ef269d">More...</a><br /></td></tr>
 <tr class="separator:a26564e8370bd5b232da4749387ef269d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa1502fb36eb53cdf34cae3b65cb3e5f7"><td class="memTemplParams" colspan="2">template&lt;typename Token &gt; </td></tr>
 <tr class="memitem:aa1502fb36eb53cdf34cae3b65cb3e5f7"><td class="memTemplItemLeft" align="right" valign="top">auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classcurlio_1_1_response.html#aa1502fb36eb53cdf34cae3b65cb3e5f7">async_await_completion</a> (Token &amp;&amp;token)</td></tr>
@@ -183,7 +195,7 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00075">75</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00086">86</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -210,7 +222,7 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00090">90</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00101">101</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -243,7 +255,7 @@ template&lt;typename Token &gt; </div>
 
 <p>Waits until the response is complete. Data must be read before this function. </p>
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00148">148</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00159">159</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -273,7 +285,13 @@ template&lt;typename Token &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00133">133</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p>Waits for the last header that is not a redirect. </p>
+<p >Effectively does: </p><div class="fragment"><div class="line"><span class="keywordflow">do</span> {</div>
+<div class="line">  <span class="keyword">co_await</span> <a class="code hl_function" href="classcurlio_1_1_response.html#adb29d23a4836b87ec7320f606eecf568">async_await_next_headers</a>(use_awaitable);</div>
+<div class="line">} <span class="keywordflow">while</span> (is_redirect());</div>
+<div class="ttc" id="aclasscurlio_1_1_response_html_adb29d23a4836b87ec7320f606eecf568"><div class="ttname"><a href="classcurlio_1_1_response.html#adb29d23a4836b87ec7320f606eecf568">curlio::Response::async_await_next_headers</a></div><div class="ttdeci">auto async_await_next_headers(Token &amp;&amp;token)</div><div class="ttdoc">Waits for the next header segment. Check with is_redirect() if another header segment follows.</div><div class="ttdef"><b>Definition:</b> <a href="response_8hpp_source.html#l00045">response.hpp:45</a></div></div>
+</div><!-- fragment --> 
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00144">144</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -303,7 +321,9 @@ template&lt;typename Token &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00044">44</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p>Waits for the next header segment. Check with is_redirect() if another header segment follows. </p>
+
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00045">45</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -343,7 +363,7 @@ template&lt;typename Mutable_buffer_sequence , typename Token &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00170">170</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00181">181</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -372,7 +392,7 @@ template&lt;typename Mutable_buffer_sequence , typename Token &gt; </div>
 
 <p>Returns the content length of the response or <code>-1</code> if unknown. </p>
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00100">100</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00111">111</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -401,7 +421,7 @@ template&lt;typename Mutable_buffer_sequence , typename Token &gt; </div>
 
 <p>Returns the content type of the response. The string will get freed when <code>this</code> dies. </p>
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00109">109</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00120">120</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -430,7 +450,7 @@ template&lt;typename Mutable_buffer_sequence , typename Token &gt; </div>
 
 <p>Getting the executor of an invalid response is undefined behavior. </p>
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00056">56</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00067">67</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -565,7 +585,7 @@ template&lt;typename Mutable_buffer_sequence , typename Token &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00126">126</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00137">137</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -593,7 +613,7 @@ template&lt;typename Mutable_buffer_sequence , typename Token &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00214">214</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00225">225</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>
@@ -620,7 +640,7 @@ template&lt;typename Mutable_buffer_sequence , typename Token &gt; </div>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00116">116</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="response_8hpp_source.html#l00127">127</a> of file <a class="el" href="response_8hpp_source.html">response.hpp</a>.</p>
 
 </div>
 </div>

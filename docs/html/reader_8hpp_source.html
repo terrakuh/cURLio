@@ -1,3 +1,4 @@
+<!-- HTML header for doxygen 1.9.3-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -19,6 +20,15 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
+<link href="doxygen-awesome-sidebar-only-darkmode-toggle.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="doxygen-awesome-darkmode-toggle.js"></script>
+<script type="text/javascript" src="doxygen-awesome-fragment-copy-button.js"></script>
+<script type="text/javascript" src="doxygen-awesome-paragraph-link.js"></script>
+<script type="text/javascript">
+	DoxygenAwesomeDarkModeToggle.init()
+	DoxygenAwesomeFragmentCopyButton.init()
+	DoxygenAwesomeParagraphLink.init()
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -136,8 +146,8 @@ $(document).ready(function(){initNavTree('reader_8hpp_source.html',''); initResi
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span> </div>
 <div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>} <span class="comment">// namespace curlio::quick</span></div>
 <div class="ttc" id="aclasscurlio_1_1_response_html"><div class="ttname"><a href="classcurlio_1_1_response.html">curlio::Response</a></div><div class="ttdef"><b>Definition:</b> <a href="response_8hpp_source.html#l00023">response.hpp:23</a></div></div>
-<div class="ttc" id="aclasscurlio_1_1_response_html_a08c5125afb71fc92ad59be0a7f6e3490"><div class="ttname"><a href="classcurlio_1_1_response.html#a08c5125afb71fc92ad59be0a7f6e3490">curlio::Response::get_executor</a></div><div class="ttdeci">boost::asio::any_io_executor get_executor() noexcept</div><div class="ttdoc">Getting the executor of an invalid response is undefined behavior.</div><div class="ttdef"><b>Definition:</b> <a href="response_8hpp_source.html#l00056">response.hpp:56</a></div></div>
-<div class="ttc" id="aclasscurlio_1_1_response_html_a60aac053e0d13de049a740516c22cec2"><div class="ttname"><a href="classcurlio_1_1_response.html#a60aac053e0d13de049a740516c22cec2">curlio::Response::content_length</a></div><div class="ttdeci">curl_off_t content_length() noexcept</div><div class="ttdoc">Returns the content length of the response or -1 if unknown.</div><div class="ttdef"><b>Definition:</b> <a href="response_8hpp_source.html#l00100">response.hpp:100</a></div></div>
+<div class="ttc" id="aclasscurlio_1_1_response_html_a08c5125afb71fc92ad59be0a7f6e3490"><div class="ttname"><a href="classcurlio_1_1_response.html#a08c5125afb71fc92ad59be0a7f6e3490">curlio::Response::get_executor</a></div><div class="ttdeci">boost::asio::any_io_executor get_executor() noexcept</div><div class="ttdoc">Getting the executor of an invalid response is undefined behavior.</div><div class="ttdef"><b>Definition:</b> <a href="response_8hpp_source.html#l00067">response.hpp:67</a></div></div>
+<div class="ttc" id="aclasscurlio_1_1_response_html_a60aac053e0d13de049a740516c22cec2"><div class="ttname"><a href="classcurlio_1_1_response.html#a60aac053e0d13de049a740516c22cec2">curlio::Response::content_length</a></div><div class="ttdeci">curl_off_t content_length() noexcept</div><div class="ttdoc">Returns the content length of the response or -1 if unknown.</div><div class="ttdef"><b>Definition:</b> <a href="response_8hpp_source.html#l00111">response.hpp:111</a></div></div>
 <div class="ttc" id="areader_8hpp_html_a8331dc514723d8f274a45af0d3d8c3f7"><div class="ttname"><a href="reader_8hpp.html#a8331dc514723d8f274a45af0d3d8c3f7">curlio::quick::async_read_all</a></div><div class="ttdeci">auto async_read_all(Response &amp;response, Token &amp;&amp;token)</div><div class="ttdoc">Reads the content from the given stream into a string.The handler signature is void(boost::system::er...</div><div class="ttdef"><b>Definition:</b> <a href="reader_8hpp_source.html#l00024">reader.hpp:24</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
