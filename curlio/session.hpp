@@ -21,12 +21,12 @@ namespace curlio {
  * curlio::Session session{ service.get_executor() };
  * curlio::Request req{};
  * req.set_url("http://example.com");
- * 
+ *
  * auto resp = session.start(req);
  * co_await resp.async_await_last_headers(use_awaitable);
  * const std::string content = co_await curlio::quick::async_read_all(resp, use_awaitable);
  * co_await resp.async_await_completion(use_awaitable);
-  * @endcode
+ * @endcode
  */
 class Session {
 public:
@@ -41,6 +41,15 @@ public:
 	CURLIO_NO_DISCARD Response start(Request& request);
 	void set_cookie_file(std::string file) { _cookie_file = std::move(file); }
 	executor_type get_executor() noexcept { return _strand; }
+	void remove(CURL* handle)
+	{
+		detail::Shared_data* data = nullptr;
+		curl_multi_remove_handle(_multi_handle, handle);
+		if (curl_easy_getinfo(handle, CURLINFO_PRIVATE, &data) == CURLE_OK && data != nullptr) {
+			CURLIO_DEBUG("Request " << data << " is done");
+			_active_requests.erase(data);
+		}
+	}
 	Session& operator=(Session&& move) = delete;
 
 private:
