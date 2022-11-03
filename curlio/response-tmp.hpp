@@ -44,7 +44,7 @@ public:
 	template<typename Token>
 	auto async_await_next_headers(Token&& token)
 	{
-		return _header_collector.async_await_headers(std::forward<Token>(token));
+		return _header_collector.async_await_sync_await_headers(std::forward<Token>(token));
 	}
 	/**
 	 * Waits for the last header that is not a redirect.
@@ -185,12 +185,13 @@ inline auto Response::async_read_some(const Mutable_buffer_sequence& buffers, To
 	  [this, buffers](auto&& handler) {
 		  const auto ptr = _data.lock();
 		  auto executor  = boost::asio::get_associated_executor(handler, ptr->executor);
+			std::size_t bytes_transferred = 0;
+			boost::asio::error_code ec{};
 
 		  // can immediately finish
 		  if (_input_buffer.size() > 0) {
-			  const std::size_t copied = boost::asio::buffer_copy(buffers, _input_buffer.data());
-			  _input_buffer.consume(copied);
-			  boost::asio::post(executor, std::bind(std::move(handler), boost::system::error_code{}, copied));
+			  bytes_transferred = boost::asio::buffer_copy(buffers, _input_buffer.data());
+			  _input_buffer.consume(bytes_transferred);
 		  } else if (_receive_handler) {
 			  boost::asio::post(executor, std::bind(std::move(handler), make_error_code(Code::multiple_reads), 0));
 		  } else if (ptr == nullptr || ptr->status & detail::finished) {

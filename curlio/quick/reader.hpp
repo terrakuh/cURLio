@@ -6,7 +6,7 @@
 #pragma once
 
 #include "../error.hpp"
-#include "../response.hpp"
+#include "../basic_response.hpp"
 
 #include <boost/asio.hpp>
 #include <string>

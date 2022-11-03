@@ -6,7 +6,7 @@
 #pragma once
 
 #include <boost/asio.hpp>
-#include <boost/numeric/conversion/cast.hpp>
+#include <boost/cast.hpp>
 #include <curl/curl.h>
 #include <map>
 #include <sstream>

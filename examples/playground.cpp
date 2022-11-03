@@ -23,45 +23,72 @@ int main(int argc, char** argv)
 	std::string s;
 	io_service service;
 
+	auto session = curlio::make_session<boost::asio::any_io_executor>(service.get_executor());
+
 	co_spawn(
 	  service,
 	  [&]() -> awaitable<void> {
-		  try {
-			  curlio::Session session{ service.get_executor() };
-			  curlio::Request req{};
-			  req.set_url("http://localhost:8083/kartoffel.bin");
-			  auto resp = session.start(req);
+		  auto request = curlio::make_request(session);
 
-			  // steady_timer timer{service};
-			  // timer.expires_after(std::chrono::minutes{3});
-			  // co_await timer.async_wait(use_awaitable);
-			  // std::cout << "Done with artifical timeout\n";
+		  curl_easy_setopt(request->native_handle(), CURLOPT_URL, "http://example.com/");
 
-			  do {
-				  co_await resp.async_await_next_headers(use_awaitable);
-				  std::cout << "=======RECEIVED HEADER======\n";
-			  } while (resp.is_redirect());
-			  std::cout << "Final headers received\n";
+		  auto response = co_await session->async_start(request, use_awaitable);
 
-			  // co_await curlio::quick::async_read_all(resp, use_awaitable);
-			  // std::cout << "\nRead all data\n";
-
-			  while (true) {
-				  char buf[4096];
-				  auto [ec, n] = co_await resp.async_read_some(buffer(buf), use_nothrow_awaitable);
-				  if (ec == error::eof) {
-					  break;
-				  }
-				  // std::cout.write(buf, n);
-			  }
-				std::cout << "Done reading\n";
-			  co_await resp.async_await_completion(use_awaitable);
-		  } catch (const std::exception& e) {
-			  std::cerr << "Exception: " << e.what() << "\n";
+		  co_await response->async_wait_headers(use_awaitable);
+		  for (const auto& [key, value] : response->headers()) {
+			  std::cout << "Header: " << key << "=" << value << "\n";
 		  }
-		  co_return;
+
+		  char data[1024];
+		  while (true) {
+			  const std::size_t read = co_await response->async_read_some(buffer(data), use_awaitable);
+			  if (read == 0) {
+				  break;
+			  }
+			  std::cout.write(data, read);
+		  }
 	  },
 	  detached);
+
+	// co_spawn(
+	//   service,
+	//   [&]() -> awaitable<void> {
+	// 	  try {
+	// 		  curlio::Session session{ service.get_executor() };
+	// 		  curlio::Request req{};
+	// 		  req.set_url("http://localhost:8083/kartoffel.bin");
+	// 		  auto resp = session.start(req);
+
+	// 		  // steady_timer timer{service};
+	// 		  // timer.expires_after(std::chrono::minutes{3});
+	// 		  // co_await timer.async_wait(use_awaitable);
+	// 		  // std::cout << "Done with artifical timeout\n";
+
+	// 		  do {
+	// 			  co_await resp.async_await_next_headers(use_awaitable);
+	// 			  std::cout << "=======RECEIVED HEADER======\n";
+	// 		  } while (resp.is_redirect());
+	// 		  std::cout << "Final headers received\n";
+
+	// 		  // co_await curlio::quick::async_read_all(resp, use_awaitable);
+	// 		  // std::cout << "\nRead all data\n";
+
+	// 		  while (true) {
+	// 			  char buf[4096];
+	// 			  auto [ec, n] = co_await resp.async_read_some(buffer(buf), use_nothrow_awaitable);
+	// 			  if (ec == error::eof) {
+	// 				  break;
+	// 			  }
+	// 			  // std::cout.write(buf, n);
+	// 		  }
+	// 			std::cout << "Done reading\n";
+	// 		  co_await resp.async_await_completion(use_awaitable);
+	// 	  } catch (const std::exception& e) {
+	// 		  std::cerr << "Exception: " << e.what() << "\n";
+	// 	  }
+	// 	  co_return;
+	//   },
+	//   detached);
 
 	std::cout << "Service running with cURL version: " << curl_version() << "\n";
 	std::thread t{ [&] { service.run(); } };
