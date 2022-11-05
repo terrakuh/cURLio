@@ -63,6 +63,7 @@ inline std::size_t Basic_request<Executor>::_read_callback(char* data, std::size
 	if (total_length == 0) {
 		return 0;
 	}
+	return 0;
 
 	// Someone is waiting for more data.
 	if (self->_send_handler) {

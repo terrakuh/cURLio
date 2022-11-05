@@ -4,6 +4,7 @@
 #include "basic_response.hpp"
 #include "basic_session.hpp"
 #include "error.hpp"
+#include "log.hpp"
 
 namespace curlio {
 
@@ -86,8 +87,13 @@ inline Basic_response<Executor>::Basic_response(std::shared_ptr<Basic_session<Ex
 template<typename Executor>
 inline void Basic_response<Executor>::_mark_finished()
 {
+	CURLIO_INFO("Marked as finished");
 	_finished = true;
 	// _header_collector.finish();
+	if (_receive_handler) {
+		_receive_handler(boost::asio::error::eof, nullptr, 0);
+		_receive_handler.reset();
+	}
 }
 
 template<typename Executor>
@@ -105,6 +111,8 @@ inline std::size_t Basic_response<Executor>::_write_callback(char* data, std::si
 	if (self->_receive_handler) {
 		const std::size_t immediately_consumed = self->_receive_handler({}, data, total_length);
 		self->_receive_handler.reset();
+		CURLIO_TRACE("Received " << total_length << " bytes and consumed " << immediately_consumed);
+
 		const std::size_t copied = boost::asio::buffer_copy(
 		  self->_input_buffer.prepare(total_length - immediately_consumed),
 		  boost::asio::buffer(data + immediately_consumed, total_length - immediately_consumed));
@@ -112,6 +120,7 @@ inline std::size_t Basic_response<Executor>::_write_callback(char* data, std::si
 		return immediately_consumed + copied;
 	}
 
+	CURLIO_TRACE("Received " << total_length << " bytes but pausing");
 	return CURL_WRITEFUNC_PAUSE;
 }
 

@@ -10,7 +10,7 @@ project(
 
 option(CURLIO_BUILD_EXAMPLES "The example programs." OFF)
 
-find_package(CURL 7.18 REQUIRED)
+find_package(CURL 7.21 REQUIRED)
 find_package(Threads REQUIRED)
 
 find_package(Boost)

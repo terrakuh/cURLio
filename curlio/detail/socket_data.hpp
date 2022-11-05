@@ -5,15 +5,13 @@
 namespace curlio::detail {
 
 struct Socket_data {
-	boost::asio::ip::tcp::socket socket;
-	boost::asio::cancellation_signal cancel_wait_read;
-	boost::asio::cancellation_signal cancel_wait_write;
-	void* user_data = nullptr;
+	enum Wait_flag {
+		wait_flag_write = 0x1,
+		wait_flag_read  = 0x2,
+	};
 
-	~Socket_data() noexcept
-	{
-		socket.release();
-	}
+	boost::asio::ip::tcp::socket socket;
+	int wait_flags = 0;
 };
 
 } // namespace curlio::detail
