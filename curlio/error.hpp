@@ -5,7 +5,7 @@
  */
 #pragma once
 
-#include <boost/system.hpp>
+#include <system_error>
 #include <type_traits>
 
 namespace curlio {
@@ -28,14 +28,14 @@ enum class Condition {
 	usage,
 };
 
-boost::system::error_condition make_error_condition(Condition condition) noexcept;
+std::error_condition make_error_condition(Condition condition) noexcept;
 
-inline const boost::system::error_category& code_category() noexcept
+inline const std::error_category& code_category() noexcept
 {
-	static class : public boost::system::error_category {
+	static class : public std::error_category {
 	public:
 		const char* name() const noexcept override { return "curlio"; }
-		boost::system::error_condition default_error_condition(int code) const noexcept override
+		std::error_condition default_error_condition(int code) const noexcept override
 		{
 			if (code == 0) {
 				return make_error_condition(Condition::success);
@@ -65,9 +65,9 @@ inline const boost::system::error_category& code_category() noexcept
 	return category;
 }
 
-inline const boost::system::error_category& condition_category() noexcept
+inline const std::error_category& condition_category() noexcept
 {
-	static class : public boost::system::error_category {
+	static class : public std::error_category {
 	public:
 		const char* name() const noexcept override { return "curlio"; }
 		std::string message(int condition) const override
@@ -82,19 +82,19 @@ inline const boost::system::error_category& condition_category() noexcept
 	return category;
 }
 
-inline boost::system::error_code make_error_code(Code code) noexcept
+inline std::error_code make_error_code(Code code) noexcept
 {
 	return { static_cast<int>(code), code_category() };
 }
 
-inline boost::system::error_condition make_error_condition(Condition condition) noexcept
+inline std::error_condition make_error_condition(Condition condition) noexcept
 {
 	return { static_cast<int>(condition), condition_category() };
 }
 
 } // namespace curlio
 
-namespace boost::system {
+namespace std {
 
 template<>
 struct is_error_code_enum<curlio::Code> : std::true_type {};
@@ -102,4 +102,4 @@ struct is_error_code_enum<curlio::Code> : std::true_type {};
 template<>
 struct is_error_condition_enum<curlio::Condition> : std::true_type {};
 
-} // namespace boost::system
+} // namespace std

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/asio.hpp>
+#include "asio_include.hpp"
 
 namespace curlio::detail {
 
@@ -10,7 +10,7 @@ struct Socket_data {
 		wait_flag_read  = 0x2,
 	};
 
-	boost::asio::ip::tcp::socket socket;
+	CURLIO_ASIO_NS::ip::tcp::socket socket;
 	int wait_flags = 0;
 };
 

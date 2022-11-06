@@ -5,55 +5,42 @@
  */
 #pragma once
 
-#include "../error.hpp"
 #include "../basic_response.hpp"
+#include "../error.hpp"
 
-#include <boost/asio.hpp>
 #include <string>
 
 namespace curlio::quick {
 
-/**
- * Reads the content from the given stream into a string.The handler signature is
- * `void(boost::system::error_code, std::string)`.
- *
- * @pre `response.is_active() == true`
- * @param response This object must live as long as this operation is running.
- */
-template<typename Token>
-inline auto async_read_all(Response& response, Token&& token)
+template<typename Executor>
+inline auto async_read_all(const std::shared_ptr<Basic_response<Executor>>& response, auto&& token)
 {
-	return boost::asio::async_compose<Token, void(boost::system::error_code, std::string)>(
-	  [&response, last_buffer_size = std::size_t{ 0 }, has_limit = false, buffer = std::string{}](
-	    auto& self, boost::system::error_code ec = {}, std::size_t bytes_read = 0) mutable {
-		  if (!ec && bytes_read == 0 && !response.is_active()) {
-			  ec = Code::request_not_active;
-		  }
-
-		  last_buffer_size += bytes_read;
+	return CURLIO_ASIO_NS::async_compose<decltype(token), void(detail::asio_error_code, std::string)>(
+	  [response, last_buffer_size = std::size_t{ 0 }, has_limit = false, buffer = std::string{}](
+	    auto& self, const detail::asio_error_code& ec = {}, std::size_t bytes_transferred = 0) mutable {
+		  last_buffer_size += bytes_transferred;
 		  if (ec) {
 			  buffer.resize(last_buffer_size);
-			  self.complete(ec == boost::asio::error::eof ? boost::system::error_code{} : ec, std::move(buffer));
+			  self.complete(ec == CURLIO_ASIO_NS::error::eof ? detail::asio_error_code{} : ec, std::move(buffer));
 		  } else {
-			  if (bytes_read == 0) {
-				  const auto length = response.content_length();
-				  CURLIO_DEBUG("Content length for reading " << length);
-				  if (length >= 0) {
-					  has_limit = true;
-					  buffer.resize(static_cast<std::size_t>(length));
-				  }
+			  if (long length = -1; bytes_transferred == 0 &&
+			                        curl_easy_getinfo(response->native_handle(), CURLINFO_CONTENT_LENGTH_DOWNLOAD_T,
+			                                          &length) == CURLE_OK &&
+			                        length >= 0) {
+				  has_limit = true;
+				  buffer.resize(static_cast<std::size_t>(length));
 			  }
 
 			  if (buffer.size() - last_buffer_size < 4096) {
 				  buffer.resize(last_buffer_size + 4096);
 			  }
 
-			  response.async_read_some(
-			    boost::asio::buffer(buffer.data() + last_buffer_size, buffer.size() - last_buffer_size),
+			  response->async_read_some(
+			    CURLIO_ASIO_NS::buffer(buffer.data() + last_buffer_size, buffer.size() - last_buffer_size),
 			    std::move(self));
 		  }
 	  },
-	  token, response.get_executor());
+	  token, response->get_executor());
 }
 
 } // namespace curlio::quick

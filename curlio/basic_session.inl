@@ -21,10 +21,10 @@ inline Basic_session<Executor>::~Basic_session() noexcept
 template<typename Executor>
 inline auto Basic_session<Executor>::async_start(request_pointer request, auto&& token)
 {
-	return boost::asio::async_initiate<decltype(token),
-	                                   void(boost::system::error_code, std::shared_ptr<Response>)>(
+	return CURLIO_ASIO_NS::async_initiate<decltype(token),
+	                                      void(detail::asio_error_code, std::shared_ptr<Response>)>(
 	  [this, request = std::move(request)](auto handler) mutable {
-		  boost::asio::dispatch(
+		  CURLIO_ASIO_NS::dispatch(
 		    _strand, [this, request = std::move(request), handler = std::move(handler)]() mutable {
 			    const auto easy_handle = request->native_handle();
 
@@ -34,15 +34,16 @@ inline auto Basic_session<Executor>::async_start(request_pointer request, auto&&
 			    curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETDATA, this);
 
 			    // Kick start.
+			    CURLIO_TRACE("Starting handle " << easy_handle);
 			    curl_multi_add_handle(_multi_handle, easy_handle);
 			    _perform(CURL_SOCKET_TIMEOUT, 0);
 
 			    std::shared_ptr<Response> response{ new Response{ this->shared_from_this(), std::move(request) } };
 			    _active_requests.insert({ easy_handle, response });
 
-			    auto executor = boost::asio::get_associated_executor(handler, get_executor());
-			    boost::asio::post(std::move(executor),
-			                      std::bind(std::move(handler), boost::system::error_code{}, std::move(response)));
+			    auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
+			    CURLIO_ASIO_NS::post(std::move(executor),
+			                         std::bind(std::move(handler), detail::asio_error_code{}, std::move(response)));
 		    });
 	  },
 	  token);
@@ -55,7 +56,7 @@ inline Basic_session<Executor>::executor_type Basic_session<Executor>::get_execu
 }
 
 template<typename Executor>
-inline boost::asio::strand<Executor>& Basic_session<Executor>::get_strand() noexcept
+inline CURLIO_ASIO_NS::strand<Executor>& Basic_session<Executor>::get_strand() noexcept
 {
 	return _strand;
 }
@@ -78,10 +79,9 @@ inline void Basic_session<Executor>::_monitor(const std::shared_ptr<detail::Sock
 {
 	if (data->wait_flags & type) {
 		data->socket.async_wait(
-		  type == detail::Socket_data::wait_flag_write ? boost::asio::socket_base::wait_write
-		                                               : boost::asio::socket_base::wait_read,
-		  [this, type, data](const auto& ec) {
-			  BOOST_ASIO_HANDLER_LOCATION((__FILE__, __LINE__, __func__));
+		  type == detail::Socket_data::wait_flag_write ? CURLIO_ASIO_NS::socket_base::wait_write
+		                                               : CURLIO_ASIO_NS::socket_base::wait_read,
+		  [this, type, data](const detail::asio_error_code& ec) {
 			  CURLIO_TRACE("Socket action occurred: " << ec.what());
 			  if (!ec && data->wait_flags & type) {
 				  _perform(data->socket.native_handle(),
@@ -142,7 +142,8 @@ inline int Basic_session<Executor>::_socket_callback(CURL* easy_handle, curl_soc
 
 	const auto it = self->_sockets.find(socket);
 	if (it == self->_sockets.end()) {
-		return -1;
+		CURLIO_WARN("Socket " << socket << " not found");
+		return CURLM_OK;
 	}
 
 	const auto& data = it->second;
@@ -176,8 +177,7 @@ inline int Basic_session<Executor>::_timer_callback(CURLM* multi_handle, long ti
 		self->_timer.cancel();
 	} else {
 		self->_timer.expires_after(std::chrono::milliseconds{ timeout_ms });
-		self->_timer.async_wait([self](const auto& ec) {
-			BOOST_ASIO_HANDLER_LOCATION((__FILE__, __LINE__, __func__));
+		self->_timer.async_wait([self](const detail::asio_error_code& ec) {
 			CURLIO_DEBUG("Timeout with ec=" << ec.message());
 			if (!ec) {
 				self->_perform(CURL_SOCKET_TIMEOUT, 0);
@@ -192,18 +192,19 @@ template<typename Executor>
 inline curl_socket_t Basic_session<Executor>::_open_socket_callback(void* self_ptr, curlsocktype purpose,
                                                                     curl_sockaddr* address) noexcept
 {
+	CURLIO_TRACE("Trying to open new socket with family=" << address->family);
 	const auto self = static_cast<Basic_session*>(self_ptr);
 
-	std::optional<boost::asio::ip::tcp> protocol{};
+	std::optional<CURLIO_ASIO_NS::ip::tcp> protocol{};
 	if (address->family == AF_INET) {
-		protocol = boost::asio::ip::tcp::v4();
+		protocol = CURLIO_ASIO_NS::ip::tcp::v4();
 	} else if (address->family == AF_INET6) {
-		protocol = boost::asio::ip::tcp::v6();
+		protocol = CURLIO_ASIO_NS::ip::tcp::v6();
 	}
 
 	if (protocol.has_value()) {
-		boost::system::error_code ec{};
-		auto data = std::make_shared<detail::Socket_data>(boost::asio::ip::tcp::socket{ self->_strand });
+		detail::asio_error_code ec{};
+		auto data = std::make_shared<detail::Socket_data>(CURLIO_ASIO_NS::ip::tcp::socket{ self->_strand });
 		data->socket.open(protocol.value(), ec);
 		if (!ec) {
 			const auto fd = data->socket.native_handle();
@@ -224,7 +225,7 @@ inline int Basic_session<Executor>::_close_socket_callback(void* self_ptr, curl_
 
 	CURLIO_INFO("Closing socket: " << socket);
 	if (const auto it = self->_sockets.find(socket); it != self->_sockets.end()) {
-		boost::system::error_code ec{};
+		detail::asio_error_code ec{};
 		it->second->socket.close(ec);
 		self->_sockets.erase(it);
 		if (ec) {

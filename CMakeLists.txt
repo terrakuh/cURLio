@@ -9,12 +9,18 @@ project(
 )
 
 option(CURLIO_BUILD_EXAMPLES "The example programs." OFF)
+option(CURLIO_FETCH_DEPENDENCIES "Fetches the required dependencies automatically." OFF)
 
 find_package(CURL 7.21 REQUIRED)
 find_package(Threads REQUIRED)
 
-find_package(Boost)
-if(NOT Boost_FOUND)
+set(required "")
+if(NOT CURLIO_FETCH_DEPENDENCIES)
+  set(required REQUIRED)
+endif()
+
+find_package(Boost 1.78 ${required})
+if(NOT Boost_FOUND AND CURLIO_FETCH_DEPENDENCIES)
   message(STATUS "Boost not found. Fetching from jfrog.io")
   include(FetchContent)
   FetchContent_Declare(
@@ -26,6 +32,9 @@ if(NOT Boost_FOUND)
   FetchContent_GetProperties(Boost SOURCE_DIR Boost_INCLUDE_DIR)
   find_package(Boost REQUIRED)
 endif()
+# include(FetchContent) FetchContent_Declare(asio URL
+# https://sourceforge.net/projects/asio/files/asio/1.24.0%20%28Stable%29/asio-1.24.0.zip/download)
+# FetchContent_MakeAvailable(asio)
 
 add_subdirectory(curlio)
 

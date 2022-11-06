@@ -1,11 +1,11 @@
 #pragma once
 
 #include "config.hpp"
+#include "detail/asio_include.hpp"
 #include "detail/function.hpp"
 #include "detail/header_collector.hpp"
 #include "fwd.hpp"
 
-#include <boost/asio.hpp>
 #include <curl/curl.h>
 #include <map>
 #include <memory>
@@ -31,8 +31,8 @@ private:
 
 	std::shared_ptr<Basic_session<Executor>> _session;
 	std::shared_ptr<Basic_request<Executor>> _request;
-	boost::asio::streambuf _input_buffer;
-	detail::Function<std::size_t(boost::system::error_code, const char*, std::size_t)> _receive_handler;
+	CURLIO_ASIO_NS::streambuf _input_buffer;
+	detail::Function<std::size_t(detail::asio_error_code, const char*, std::size_t)> _receive_handler;
 	detail::Header_collector _header_collector;
 	bool _finished = false;
 
@@ -43,6 +43,6 @@ private:
 	                                   void* self_ptr) noexcept;
 };
 
-using Response = Basic_response<boost::asio::any_io_executor>;
+using Response = Basic_response<CURLIO_ASIO_NS::any_io_executor>;
 
 } // namespace curlio

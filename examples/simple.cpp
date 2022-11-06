@@ -1,48 +1,48 @@
 /**
  * @example
-*/
-#include <boost/asio.hpp>
-#include <boost/json/src.hpp>
+ */
+// #define CURLIO_USE_STANDALONE_ASIO
+// #define CURLIO_ENABLE_LOGGING
+
 #include <curlio/curlio.hpp>
 #include <iostream>
 
-using namespace boost::asio;
+using namespace CURLIO_ASIO_NS;
 
 int main(int argc, char** argv)
 {
 	curl_global_init(CURL_GLOBAL_ALL);
-	std::string s;
 	io_service service;
 
+	auto session = curlio::make_session<any_io_executor>(service.get_executor());
 	co_spawn(
 	  service,
 	  [&]() -> awaitable<void> {
-		  curlio::Session session{ service.get_executor() };
-		  curlio::Request req{};
-		  req.set_url("http://example.com");
-		  auto resp = session.start(req);
+		  // Create request and set options.
+		  auto request = curlio::make_request(session);
+		  curl_easy_setopt(request->native_handle(), CURLOPT_URL, "http://example.com");
+		  curl_easy_setopt(request->native_handle(), CURLOPT_USERAGENT, "cURLio");
 
-		  co_await resp.async_await_last_headers(use_awaitable);
-		  std::cout << "Headers received\n";
+		  // Launches the request which will then run in the background.
+		  auto response = co_await session->async_start(request, use_awaitable);
 
-		  const std::string content = co_await curlio::quick::async_read_all(resp, use_awaitable);
-		  std::cout << content << "\n";
-		  std::cout << "Done reading " << content.length() << " bytes\n";
+		  co_await response->async_wait_headers(use_awaitable);
 
-		  // // or manually
-		  // char buf[4096];
-		  // while (true) {
-		  //   boost::system::error_code ec;
-		  //   const std::size_t read =
-		  //     co_await resp.async_read_some(buffer(buf), redirect_error(use_awaitable, ec));
-		  //   if (ec == error::eof) {
-		  // 	  break;
-		  //   }
-		  //   std::cout.write(buf, read);
-		  // }
+		  // Read all and do something with the data.
+		  char data[4096];
+		  while (true) {
+			  try {
+				  const auto bytes_transferred = co_await response->async_read_some(buffer(data), use_awaitable);
+				  /* Do something. */
+				  std::cout.write(data, bytes_transferred);
+			  } catch (...) {
+				  break;
+			  }
+		  }
 
-		  co_await resp.async_await_completion(use_awaitable);
-		  co_return;
+		  // When all data was read and the `response->async_read_some()` returned `asio::error::eof`
+		  // the request is removed from the session and can be used again.
+			std::cout << "All transfers done\n";
 	  },
 	  detached);
 

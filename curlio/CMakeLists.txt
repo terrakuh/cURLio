@@ -3,7 +3,7 @@ file(GLOB_RECURSE sources "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp")
 add_library(curlio INTERFACE ${sources})
 add_library(curlio::curlio ALIAS curlio)
 target_link_libraries(curlio INTERFACE CURL::libcurl Threads::Threads Boost::boost)
-target_include_directories(curlio BEFORE INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>")
+target_include_directories(curlio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>")
 
 install(TARGETS curlio EXPORT ${PROJECT_NAME}-targets)
 install(

@@ -5,18 +5,19 @@
  */
 #pragma once
 
-#include <boost/asio.hpp>
-#include <boost/cast.hpp>
+#include "../detail/final_action.hpp"
+
 #include <curl/curl.h>
+#include <functional>
 #include <map>
 #include <sstream>
-#include <string_view>
+#include <string>
 
 namespace curlio::quick {
 
 /// Constructs a query parameter list from the given associative container (like `std::map`).
 template<typename Associative_container = std::map<std::string, std::string>>
-inline std::string construct_form(CURL* handle, const Associative_container& parameters) noexcept
+inline std::string construct_form(CURL* handle, const Associative_container& parameters)
 {
 	std::stringstream ss;
 	bool first = true;
@@ -26,13 +27,13 @@ inline std::string construct_form(CURL* handle, const Associative_container& par
 		}
 		first = false;
 
-		auto escaped = curl_easy_escape(handle, key.data(), boost::numeric_cast<int>(key.size()));
+		auto escaped  = curl_easy_escape(handle, key.data(), std::stoi(key.size()));
+		const auto _0 = detail::finally(std::bind(curl_free, escaped));
 		ss << escaped << '=';
-		curl_free(escaped);
 
-		escaped = curl_easy_escape(handle, value.data(), boost::numeric_cast<int>(value.size()));
+		escaped       = curl_easy_escape(handle, value.data(), std::stoi(value.size()));
+		const auto _1 = detail::finally(std::bind(curl_free, escaped));
 		ss << escaped;
-		curl_free(escaped);
 	}
 	return ss.str();
 }

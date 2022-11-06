@@ -1,14 +1,33 @@
 #pragma once
 
 #include "../error.hpp"
+#include "asio_include.hpp"
 #include "case_insensitive_less.hpp"
 
-#include <boost/algorithm/string.hpp>
 #include <curl/curl.h>
+#include <locale>
 #include <map>
 #include <string>
+#include <string_view>
 
 namespace curlio::detail {
+
+constexpr std::string_view trim(std::string_view str, const std::locale& locale = {})
+{
+	auto begin = str.begin();
+	auto end   = str.end();
+	for (; begin != end; ++begin) {
+		if (!std::isspace(*begin, locale)) {
+			break;
+		}
+	}
+	for (; begin != end; --end) {
+		if (!std::isspace(*(end - 1), locale)) {
+			break;
+		}
+	}
+	return { begin, end };
+}
 
 /// Hooks into the header callbacks of cURL and parses the header fields. Hook management must be done
 /// separately.
@@ -31,30 +50,31 @@ public:
 	void finish()
 	{
 		if (_headers_received_handler) {
-			_headers_received_handler(boost::asio::error::eof);
+			_headers_received_handler(CURLIO_ASIO_NS::error::eof);
 			_headers_received_handler.reset();
 		}
 	}
 	auto async_wait(auto&& fallback_executor, auto&& token)
 	{
-		return boost::asio::async_initiate<decltype(token), void(boost::system::error_code)>(
+		return CURLIO_ASIO_NS::async_initiate<decltype(token), void(asio_error_code)>(
 		  [this](auto handler, auto&& fallback_executor) {
-			  auto executor = boost::asio::get_associated_executor(
+			  auto executor = CURLIO_ASIO_NS::get_associated_executor(
 			    handler, std::forward<decltype(fallback_executor)>(fallback_executor));
 
 			  // Already received.
 			  if (_ready_to_await) {
 				  _ready_to_await = false;
-				  boost::asio::post(std::move(executor), std::bind(std::move(handler), boost::system::error_code{}));
+				  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), asio_error_code{}));
 			  } else if (_headers_received_handler) {
-				  boost::asio::post(std::move(executor),
-				                    std::bind(std::move(handler), make_error_code(Code::multiple_headers_awaitings)));
+				  CURLIO_ASIO_NS::post(std::move(executor),
+				                       std::bind(std::move(handler), asio_error_code{ make_error_code(
+				                                                       Code::multiple_headers_awaitings) }));
 			  } // Need to wait.
 			  else {
 				  _headers_received_handler = [this, executor = std::move(executor),
-				                               handler = std::move(handler)](boost::system::error_code ec) mutable {
+				                               handler = std::move(handler)](asio_error_code ec) mutable {
 					  _ready_to_await = false;
-					  boost::asio::post(std::move(executor), std::bind(std::move(handler), ec));
+					  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), ec));
 				  };
 			  }
 		  },
@@ -67,11 +87,12 @@ private:
 	std::uint8_t _last_clear       = 0;
 	std::uint8_t _headers_received = 0;
 	bool _ready_to_await           = false;
-	Function<void(boost::system::error_code)> _headers_received_handler;
+	Function<void(asio_error_code)> _headers_received_handler;
 
 	static std::size_t _header_callback(char* buffer, std::size_t size, std::size_t count,
 	                                    void* self_ptr) noexcept
 	{
+		static std::locale locale{};
 		const auto self                = static_cast<Header_collector*>(self_ptr);
 		const std::size_t total_length = size * count;
 
@@ -86,8 +107,7 @@ private:
 		const auto seperator = std::find(buffer, end, ':');
 		if (seperator != end) {
 			std::string key{ buffer, static_cast<std::size_t>(seperator - buffer) };
-			std::string value{ seperator + 1, static_cast<std::size_t>(end - seperator - 1) };
-			boost::algorithm::trim(value);
+			std::string value{ trim({ seperator + 1, static_cast<std::size_t>(end - seperator - 1) }, locale) };
 			self->_fields.insert({ std::move(key), std::move(value) });
 		}
 

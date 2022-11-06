@@ -1,10 +1,10 @@
 #pragma once
 
 #include "config.hpp"
+#include "detail/asio_include.hpp"
 #include "detail/socket_data.hpp"
 #include "fwd.hpp"
 
-#include <boost/asio.hpp>
 #include <curl/curl.h>
 #include <map>
 #include <memory>
@@ -23,7 +23,7 @@ public:
 
 	auto async_start(request_pointer request, auto&& token);
 	CURLIO_NO_DISCARD executor_type get_executor() const noexcept;
-	CURLIO_NO_DISCARD boost::asio::strand<Executor>& get_strand() noexcept;
+	CURLIO_NO_DISCARD CURLIO_ASIO_NS::strand<Executor>& get_strand() noexcept;
 	Basic_session& operator=(const Basic_session& copy) = delete;
 
 	template<typename Executor_>
@@ -31,10 +31,10 @@ public:
 
 private:
 	CURLM* _multi_handle;
-	boost::asio::strand<Executor> _strand;
+	CURLIO_ASIO_NS::strand<Executor> _strand;
 	std::map<CURL*, response_pointer> _active_requests;
 	std::map<curl_socket_t, std::shared_ptr<detail::Socket_data>> _sockets;
-	boost::asio::steady_timer _timer{ _strand };
+	CURLIO_ASIO_NS::steady_timer _timer{ _strand };
 
 	Basic_session(Executor executor);
 	void _monitor(const std::shared_ptr<detail::Socket_data>& data, detail::Socket_data::Wait_flag type);
@@ -48,6 +48,6 @@ private:
 	static int _close_socket_callback(void* self_ptr, curl_socket_t socket) noexcept;
 };
 
-using Session = Basic_session<boost::asio::any_io_executor>;
+using Session = Basic_session<CURLIO_ASIO_NS::any_io_executor>;
 
 } // namespace curlio
