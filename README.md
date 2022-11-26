@@ -21,8 +21,6 @@ curl_easy_setopt(request->native_handle(), CURLOPT_USERAGENT, "cURLio");
 // Launches the request which will then run in the background.
 auto response = co_await session->async_start(request, asio::use_awaitable);
 
-co_await response->async_wait_headers(asio::use_awaitable);
-
 // Read all and do something with the data.
 char data[4096];
 while (true) {

@@ -21,6 +21,7 @@ enum class Code {
 	request_not_active,
 	bad_url,
 	no_response_code,
+	bad_option,
 };
 
 enum class Condition {
@@ -57,6 +58,7 @@ inline const std::error_category& code_category() noexcept
 			case Code::request_not_active: return "request is not active";
 			case Code::bad_url: return "bad URL";
 			case Code::no_response_code: return "no response code available";
+			case Code::bad_option: return "bad option";
 
 			default: return "(unrecognized error code)";
 			}

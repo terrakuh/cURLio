@@ -4,6 +4,7 @@
 #include "detail/asio_include.hpp"
 #include "detail/function.hpp"
 #include "detail/header_collector.hpp"
+#include "detail/option_type.hpp"
 #include "fwd.hpp"
 
 #include <curl/curl.h>
@@ -20,9 +21,12 @@ public:
 
 	Basic_response(const Basic_response& copy) = delete;
 
+	template<CURLINFO Option>
+	auto get_info() const;
+	template<CURLINFO Option>
+	auto async_get_info(auto&& token) const;
 	auto async_read_some(const auto& buffers, auto&& token);
 	auto async_wait_headers(auto&& token);
-	CURLIO_NO_DISCARD const headers_type& headers() const noexcept;
 	CURLIO_NO_DISCARD executor_type get_executor() const noexcept;
 	Basic_response& operator=(const Basic_response& copy) = delete;
 
@@ -42,6 +46,9 @@ private:
 	static std::size_t _write_callback(char* data, std::size_t size, std::size_t count,
 	                                   void* self_ptr) noexcept;
 };
+
+template<typename Executor>
+auto async_wait_last_headers(std::shared_ptr<Basic_response<Executor>> response, auto&& token);
 
 using Response = Basic_response<CURLIO_ASIO_NS::any_io_executor>;
 

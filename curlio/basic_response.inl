@@ -9,6 +9,34 @@
 namespace curlio {
 
 template<typename Executor>
+template<CURLINFO Option>
+inline auto Basic_response<Executor>::get_info() const
+{
+	return async_get_info<Option>(CURLIO_ASIO_NS::use_future).get();
+}
+
+template<typename Executor>
+template<CURLINFO Option>
+inline auto Basic_response<Executor>::async_get_info(auto&& token) const
+{
+	return CURLIO_ASIO_NS::async_initiate<decltype(token),
+	                                      void(detail::asio_error_code, detail::info_type<Option>)>(
+	  [this](auto handler) {
+		  CURLIO_ASIO_NS::dispatch(_session->get_strand(), [this, handler = std::move(handler)]() mutable {
+			  detail::info_type<Option> value{};
+			  detail::asio_error_code ec{};
+
+			  // TODO
+			  curl_easy_getinfo(_request->native_handle(), Option, &value);
+
+			  auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
+			  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), ec, value));
+		  });
+	  },
+	  token);
+}
+
+template<typename Executor>
 inline auto Basic_response<Executor>::async_read_some(const auto& buffers, auto&& token)
 {
 	return CURLIO_ASIO_NS::async_initiate<decltype(token), void(detail::asio_error_code, std::size_t)>(
@@ -54,19 +82,13 @@ inline auto Basic_response<Executor>::async_read_some(const auto& buffers, auto&
 template<typename Executor>
 inline auto Basic_response<Executor>::async_wait_headers(auto&& token)
 {
-	return CURLIO_ASIO_NS::async_initiate<decltype(token), void(detail::asio_error_code)>(
+	return CURLIO_ASIO_NS::async_initiate<decltype(token), void(detail::asio_error_code, headers_type)>(
 	  [this](auto handler) {
 		  CURLIO_ASIO_NS::dispatch(_session->get_strand(), [this, handler = std::move(handler)]() mutable {
 			  _header_collector.async_wait(get_executor(), std::move(handler));
 		  });
 	  },
 	  token);
-}
-
-template<typename Executor>
-inline const Basic_response<Executor>::headers_type& Basic_response<Executor>::headers() const noexcept
-{
-	return _header_collector.fields();
 }
 
 template<typename Executor>
@@ -124,6 +146,23 @@ inline std::size_t Basic_response<Executor>::_write_callback(char* data, std::si
 
 	CURLIO_TRACE("Received " << total_length << " bytes but pausing");
 	return CURL_WRITEFUNC_PAUSE;
+}
+
+template<typename Executor>
+inline auto async_wait_last_headers(std::shared_ptr<Basic_response<Executor>> response, auto&& token)
+{
+	using headers_type = Basic_response<Executor>::headers_type;
+	return CURLIO_ASIO_NS::async_compose<decltype(token), void(detail::asio_error_code, headers_type)>(
+	  [response = std::move(response), started = false](auto& self, detail::asio_error_code ec = {},
+	                                                    headers_type headers = {}) mutable {
+		  if (!started || (!ec && headers.count("location") > 0)) {
+			  started = true;
+			  response->async_wait_headers(std::move(self));
+		  } else {
+			  self.complete(ec, std::move(headers));
+		  }
+	  },
+	  token);
 }
 
 } // namespace curlio

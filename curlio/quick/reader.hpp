@@ -16,18 +16,15 @@ template<typename Executor>
 inline auto async_read_all(const std::shared_ptr<Basic_response<Executor>>& response, auto&& token)
 {
 	return CURLIO_ASIO_NS::async_compose<decltype(token), void(detail::asio_error_code, std::string)>(
-	  [response, last_buffer_size = std::size_t{ 0 }, has_limit = false, buffer = std::string{}](
+	  [response, last_buffer_size = std::size_t{ 0 }, buffer = std::string{}](
 	    auto& self, const detail::asio_error_code& ec = {}, std::size_t bytes_transferred = 0) mutable {
 		  last_buffer_size += bytes_transferred;
 		  if (ec) {
 			  buffer.resize(last_buffer_size);
 			  self.complete(ec == CURLIO_ASIO_NS::error::eof ? detail::asio_error_code{} : ec, std::move(buffer));
 		  } else {
-			  if (long length = -1; bytes_transferred == 0 &&
-			                        curl_easy_getinfo(response->native_handle(), CURLINFO_CONTENT_LENGTH_DOWNLOAD_T,
-			                                          &length) == CURLE_OK &&
-			                        length >= 0) {
-				  has_limit = true;
+			  if (const auto length = response->template get_info<CURLINFO_CONTENT_LENGTH_DOWNLOAD_T>();
+			      bytes_transferred == 0 && length >= 0) {
 				  buffer.resize(static_cast<std::size_t>(length));
 			  }
 

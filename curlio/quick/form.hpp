@@ -11,7 +11,6 @@
 #include <functional>
 #include <map>
 #include <sstream>
-#include <string>
 
 namespace curlio::quick {
 
@@ -27,11 +26,11 @@ inline std::string construct_form(CURL* handle, const Associative_container& par
 		}
 		first = false;
 
-		auto escaped  = curl_easy_escape(handle, key.data(), std::stoi(key.size()));
+		auto escaped  = curl_easy_escape(handle, key.data(), key.size());
 		const auto _0 = detail::finally(std::bind(curl_free, escaped));
 		ss << escaped << '=';
 
-		escaped       = curl_easy_escape(handle, value.data(), std::stoi(value.size()));
+		escaped       = curl_easy_escape(handle, value.data(), value.size());
 		const auto _1 = detail::finally(std::bind(curl_free, escaped));
 		ss << escaped;
 	}

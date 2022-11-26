@@ -28,10 +28,11 @@ inline auto Basic_session<Executor>::async_start(request_pointer request, auto&&
 		    _strand, [this, request = std::move(request), handler = std::move(handler)]() mutable {
 			    const auto easy_handle = request->native_handle();
 
-			    curl_easy_setopt(easy_handle, CURLOPT_OPENSOCKETFUNCTION, &Basic_session::_open_socket_callback);
-			    curl_easy_setopt(easy_handle, CURLOPT_OPENSOCKETDATA, this);
-			    curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETFUNCTION, &Basic_session::_close_socket_callback);
-			    curl_easy_setopt(easy_handle, CURLOPT_CLOSESOCKETDATA, this);
+			    // TODO error
+			    request->template set_option<CURLOPT_OPENSOCKETFUNCTION>(&Basic_session::_open_socket_callback);
+			    request->template set_option<CURLOPT_OPENSOCKETDATA>(this);
+			    request->template set_option<CURLOPT_CLOSESOCKETFUNCTION>(&Basic_session::_close_socket_callback);
+			    request->template set_option<CURLOPT_CLOSESOCKETDATA>(this);
 
 			    // Kick start.
 			    CURLIO_TRACE("Starting handle " << easy_handle);

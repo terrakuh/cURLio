@@ -46,7 +46,6 @@ public:
 		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, nullptr);
 		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, nullptr);
 	}
-	const fields_type& fields() const noexcept { return _fields; }
 	void finish()
 	{
 		if (_headers_received_handler) {
@@ -56,7 +55,7 @@ public:
 	}
 	auto async_wait(auto&& fallback_executor, auto&& token)
 	{
-		return CURLIO_ASIO_NS::async_initiate<decltype(token), void(asio_error_code)>(
+		return CURLIO_ASIO_NS::async_initiate<decltype(token), void(asio_error_code, fields_type)>(
 		  [this](auto handler, auto&& fallback_executor) {
 			  auto executor = CURLIO_ASIO_NS::get_associated_executor(
 			    handler, std::forward<decltype(fallback_executor)>(fallback_executor));
@@ -64,17 +63,19 @@ public:
 			  // Already received.
 			  if (_ready_to_await) {
 				  _ready_to_await = false;
-				  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), asio_error_code{}));
+				  CURLIO_ASIO_NS::post(std::move(executor),
+				                       std::bind(std::move(handler), asio_error_code{}, std::move(_fields)));
 			  } else if (_headers_received_handler) {
 				  CURLIO_ASIO_NS::post(std::move(executor),
-				                       std::bind(std::move(handler), asio_error_code{ make_error_code(
-				                                                       Code::multiple_headers_awaitings) }));
+				                       std::bind(std::move(handler),
+				                                 asio_error_code{ make_error_code(Code::multiple_headers_awaitings) },
+				                                 fields_type{}));
 			  } // Need to wait.
 			  else {
 				  _headers_received_handler = [this, executor = std::move(executor),
 				                               handler = std::move(handler)](asio_error_code ec) mutable {
 					  _ready_to_await = false;
-					  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), ec));
+					  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), ec, std::move(_fields)));
 				  };
 			  }
 		  },

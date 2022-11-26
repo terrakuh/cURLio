@@ -16,6 +16,23 @@ template<typename Executor>
 inline Basic_request<Executor>::~Basic_request() noexcept
 {
 	curl_easy_cleanup(_handle);
+	curl_slist_free_all(_additional_headers);
+}
+
+template<typename Executor>
+template<CURLoption Option>
+inline void Basic_request<Executor>::set_option(detail::option_type<Option> value)
+{
+	if (const auto status = curl_easy_setopt(_handle, Option, value); status != CURLE_OK) {
+		throw std::system_error{ Code::bad_option, curl_easy_strerror(status) };
+	}
+}
+
+template<typename Executor>
+inline void Basic_request<Executor>::append_header(const char* header)
+{
+	_additional_headers = curl_slist_append(_additional_headers, header);
+	set_option<CURLOPT_HTTPHEADER>(_additional_headers);
 }
 
 template<typename Executor>
