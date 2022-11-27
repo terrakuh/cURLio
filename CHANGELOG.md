@@ -1,5 +1,10 @@
 # Change Log
 
+<h2><a href="https://github.com/terrakuh/curlio/compare/v0.3.3..v0.4">v0.4</a> - 2022-11-27</h2>
+
+### Changed
+- Implementation
+
 <h2><a href="https://github.com/terrakuh/curlio/compare/v0.3.2..v0.3.3">v0.3.3</a> - 2022-06-10</h2>
 
 ### Added

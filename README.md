@@ -15,8 +15,8 @@ auto session = curlio::make_session<boost::asio::any_io_executor>(service.get_ex
 
 // Create request and set options.
 auto request = curlio::make_request(session);
-curl_easy_setopt(request->native_handle(), CURLOPT_URL, "http://example.com");
-curl_easy_setopt(request->native_handle(), CURLOPT_USERAGENT, "cURLio");
+request->set_option<CURLOPT_URL>("http://example.com");
+request->set_option<CURLOPT_USERAGENT>("cURLio");
 
 // Launches the request which will then run in the background.
 auto response = co_await session->async_start(request, asio::use_awaitable);
@@ -52,7 +52,7 @@ cmake --install curlio/build
 And then in your `CMakeLists.txt`:
 
 ```cmake
-find_package(curlio 0.3.3 REQUIRED)
+find_package(curlio 0.4 REQUIRED)
 target_link_libraries(my-target PRIVATE curlio::curlio)
 ```
 
