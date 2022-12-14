@@ -8,8 +8,8 @@ project(
   LANGUAGES CXX
 )
 
-cmake_policy(PUSH)
-cmake_policy(SET CMP0135 NEW)
+# cmake_policy(PUSH)
+# cmake_policy(SET CMP0135 NEW)
 
 option(CURLIO_BUILD_EXAMPLES "The example programs." OFF)
 option(CURLIO_FETCH_DEPENDENCIES "Fetches the required dependencies automatically." OFF)
@@ -111,4 +111,4 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 
 include(CPack)
 
-cmake_policy(POP)
+# cmake_policy(POP)
