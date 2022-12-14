@@ -8,33 +8,64 @@ project(
   LANGUAGES CXX
 )
 
+cmake_policy(PUSH)
+cmake_policy(SET CMP0135 NEW)
+
 option(CURLIO_BUILD_EXAMPLES "The example programs." OFF)
 option(CURLIO_FETCH_DEPENDENCIES "Fetches the required dependencies automatically." OFF)
+option(CURLIO_USE_STANDALONE_ASIO "Use the standalone ASIO library instead of Boost.ASIO." OFF)
 
 find_package(CURL 7.21 REQUIRED)
 find_package(Threads REQUIRED)
 
+include(GNUInstallDirs)
+
 set(required "")
 if(NOT CURLIO_FETCH_DEPENDENCIES)
   set(required REQUIRED)
+else()
+  include(FetchContent)
 endif()
 
-find_package(Boost 1.78 ${required})
-if(NOT Boost_FOUND AND CURLIO_FETCH_DEPENDENCIES)
-  message(STATUS "Boost not found. Fetching from jfrog.io")
-  include(FetchContent)
-  FetchContent_Declare(
-    Boost
-    URL https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz
-    URL_HASH SHA256=94ced8b72956591c4775ae2207a9763d3600b30d9d7446562c552f0a14a63be7
-  )
-  FetchContent_MakeAvailable(Boost)
-  FetchContent_GetProperties(Boost SOURCE_DIR Boost_INCLUDE_DIR)
-  find_package(Boost REQUIRED)
+if(CURLIO_USE_STANDALONE_ASIO)
+  if(NOT TARGET asio::asio AND CURLIO_FETCH_DEPENDENCIES)
+    FetchContent_Declare(
+      asio
+      URL https://sourceforge.net/projects/asio/files/asio/1.24.0%20%28Stable%29/asio-1.24.0.zip/download
+    )
+    FetchContent_MakeAvailable(asio)
+    add_library(asio INTERFACE)
+    add_library(asio::asio ALIAS asio)
+    target_include_directories(
+      asio INTERFACE "$<BUILD_INTERFACE:${asio_SOURCE_DIR}/include>"
+                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+    install(TARGETS asio EXPORT ${PROJECT_NAME}-targets)
+    install(
+      DIRECTORY "${asio_SOURCE_DIR}/include/"
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+      FILES_MATCHING
+      PATTERN "*.?pp"
+    )
+  elseif(NOT TARGET asio::asio)
+    message(FATAL_ERROR "No asio::asio target provided.")
+  endif()
+  set(asio_target asio::asio)
+else()
+  find_package(Boost 1.78 ${required})
+  if(NOT Boost_FOUND AND CURLIO_FETCH_DEPENDENCIES)
+    message(STATUS "Boost not found. Fetching from jfrog.io")
+    FetchContent_Declare(
+      Boost
+      URL https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz
+      URL_HASH SHA256=94ced8b72956591c4775ae2207a9763d3600b30d9d7446562c552f0a14a63be7
+    )
+    FetchContent_MakeAvailable(Boost)
+    FetchContent_GetProperties(Boost SOURCE_DIR Boost_INCLUDE_DIR)
+    find_package(Boost REQUIRED)
+  endif()
+  set(asio_target Boost::boost)
 endif()
-# include(FetchContent) FetchContent_Declare(asio URL
-# https://sourceforge.net/projects/asio/files/asio/1.24.0%20%28Stable%29/asio-1.24.0.zip/download)
-# FetchContent_MakeAvailable(asio)
 
 add_subdirectory(curlio)
 
@@ -52,6 +83,12 @@ write_basic_package_version_file(
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
   VERSION ${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
+)
+
+install(
+  EXPORT ${PROJECT_NAME}-targets
+  DESTINATION lib/cmake/${PROJECT_NAME}
+  NAMESPACE ${PROJECT_NAME}::
 )
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
@@ -73,3 +110,5 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 
 include(CPack)
+
+cmake_policy(POP)

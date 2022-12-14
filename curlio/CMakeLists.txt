@@ -2,19 +2,20 @@ file(GLOB_RECURSE sources "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp")
 
 add_library(curlio INTERFACE ${sources})
 add_library(curlio::curlio ALIAS curlio)
-target_link_libraries(curlio INTERFACE CURL::libcurl Threads::Threads Boost::boost)
-target_include_directories(curlio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>")
+target_link_libraries(curlio INTERFACE CURL::libcurl Threads::Threads ${asio_target})
+target_include_directories(
+  curlio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>"
+                   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+if(CURLIO_USE_STANDALONE_ASIO)
+  target_compile_definitions(curlio INTERFACE CURLIO_USE_STANDALONE_ASIO)
+endif()
 
 install(TARGETS curlio EXPORT ${PROJECT_NAME}-targets)
 install(
-  EXPORT ${PROJECT_NAME}-targets
-  DESTINATION lib/cmake/${PROJECT_NAME}
-  NAMESPACE ${PROJECT_NAME}::
-  EXPORT_LINK_INTERFACE_LIBRARIES
-)
-install(
   DIRECTORY .
-  DESTINATION include/${PROJECT_NAME}
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
   FILES_MATCHING
   PATTERN "*.hpp"
 )
