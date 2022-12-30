@@ -7,6 +7,7 @@ target_include_directories(
   curlio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>"
                    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+target_compile_features(curlio INTERFACE cxx_std_17)
 
 if(CURLIO_USE_STANDALONE_ASIO)
   target_compile_definitions(curlio INTERFACE CURLIO_USE_STANDALONE_ASIO)
