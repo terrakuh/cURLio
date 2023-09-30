@@ -13,10 +13,10 @@
 namespace curlio::quick {
 
 template<typename Executor>
-inline auto async_read_all(const std::shared_ptr<Basic_response<Executor>>& response, auto&& token)
+inline auto async_read_all(std::shared_ptr<Basic_response<Executor>> response, auto&& token)
 {
 	return CURLIO_ASIO_NS::async_compose<decltype(token), void(detail::asio_error_code, std::string)>(
-	  [response, last_buffer_size = std::size_t{ 0 }, buffer = std::string{}](
+	  [response = std::move(response), last_buffer_size = std::size_t{ 0 }, buffer = std::string{}](
 	    auto& self, const detail::asio_error_code& ec = {}, std::size_t bytes_transferred = 0) mutable {
 		  last_buffer_size += bytes_transferred;
 		  if (ec) {

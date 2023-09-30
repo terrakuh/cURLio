@@ -10,6 +10,9 @@ template<typename Executor>
 inline Basic_request<Executor>::Basic_request(const Basic_request& copy) : _session{ copy._session }
 {
 	_handle = curl_easy_duphandle(copy._handle);
+
+	curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &Basic_request::_read_callback);
+	curl_easy_setopt(_handle, CURLOPT_READDATA, this);
 }
 
 template<typename Executor>
@@ -109,6 +112,9 @@ inline Basic_request<Executor>::Basic_request(std::shared_ptr<Basic_session<Exec
     : _session{ std::move(session) }
 {
 	_handle = curl_easy_init();
+
+	curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &Basic_request::_read_callback);
+	curl_easy_setopt(_handle, CURLOPT_READDATA, this);
 }
 
 template<typename Executor>

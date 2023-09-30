@@ -8,7 +8,13 @@ project(
   LANGUAGES CXX
 )
 
-option(CURLIO_BUILD_EXAMPLES "The example programs." OFF)
+set(${PROJECT_NAME}_TOP_LEVEL ON)
+get_directory_property(parent_directory PARENT_DIRECTORY)
+if(parent_directory)
+  set(${PROJECT_NAME}_TOP_LEVEL OFF)
+endif()
+
+option(CURLIO_BUILD_EXAMPLES "The example programs." ${${PROJECT_NAME}_TOP_LEVEL})
 option(CURLIO_FETCH_DEPENDENCIES "Fetches the required dependencies automatically." OFF)
 
 find_package(CURL 7.21 REQUIRED)
@@ -25,16 +31,13 @@ if(NOT Boost_FOUND AND CURLIO_FETCH_DEPENDENCIES)
   include(FetchContent)
   FetchContent_Declare(
     Boost
-    URL https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz
-    URL_HASH SHA256=94ced8b72956591c4775ae2207a9763d3600b30d9d7446562c552f0a14a63be7
+    URL https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.gz
+    URL_HASH SHA256=c0685b68dd44cc46574cce86c4e17c0f611b15e195be9848dfd0769a0a207628
   )
   FetchContent_MakeAvailable(Boost)
   FetchContent_GetProperties(Boost SOURCE_DIR Boost_INCLUDE_DIR)
   find_package(Boost REQUIRED)
 endif()
-# include(FetchContent) FetchContent_Declare(asio URL
-# https://sourceforge.net/projects/asio/files/asio/1.24.0%20%28Stable%29/asio-1.24.0.zip/download)
-# FetchContent_MakeAvailable(asio)
 
 add_subdirectory(curlio)
 
@@ -58,18 +61,26 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
         DESTINATION lib/cmake/${PROJECT_NAME}
 )
+install(
+  EXPORT ${PROJECT_NAME}-targets
+  DESTINATION lib/cmake/${PROJECT_NAME}
+  NAMESPACE ${PROJECT_NAME}::
+  EXPORT_LINK_INTERFACE_LIBRARIES
+)
 
 # CPack
-set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
-set(CPACK_PACKAGE_CONTACT "Yunus Ayar")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}")
-set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
-set(CPACK_GENERATOR DEB TGZ)
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+if(${PROJECT_NAME}_TOP_LEVEL)
+  set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+  set(CPACK_PACKAGE_CONTACT "Yunus Ayar")
+  set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
+  set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}")
+  set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+  set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+  set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+  set(CPACK_GENERATOR DEB TGZ)
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 
-include(CPack)
+  include(CPack)
+endif()
