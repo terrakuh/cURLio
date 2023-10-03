@@ -3,6 +3,7 @@
 #include "basic_request.hpp"
 #include "basic_session.hpp"
 #include "error.hpp"
+#include "log.hpp"
 
 namespace curlio {
 
@@ -120,6 +121,7 @@ inline Basic_request<Executor>::Basic_request(std::shared_ptr<Basic_session<Exec
 template<typename Executor>
 inline void Basic_request<Executor>::_mark_finished()
 {
+	CURLIO_INFO("Request marked as finished");
 	if (_send_handler) {
 		_send_handler(CURLIO_ASIO_NS::error::eof, nullptr, 0);
 		_send_handler.reset();

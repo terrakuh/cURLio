@@ -16,6 +16,8 @@ endif()
 
 option(CURLIO_BUILD_EXAMPLES "The example programs." ${${PROJECT_NAME}_TOP_LEVEL})
 option(CURLIO_FETCH_DEPENDENCIES "Fetches the required dependencies automatically." OFF)
+option(CURLIO_ENABLE_LOGGING "Prints debug logs during execution." OFF)
+mark_as_advanced(CURLIO_ENABLE_LOGGING)
 
 find_package(CURL 7.21 REQUIRED)
 find_package(Threads REQUIRED)

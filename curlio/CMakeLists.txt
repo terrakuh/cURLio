@@ -7,6 +7,10 @@ target_include_directories(
   curlio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>" $<INSTALL_INTERFACE:include>
 )
 
+if(CURLIO_ENABLE_LOGGING)
+  target_compile_definitions(curlio INTERFACE CURLIO_ENABLE_LOGGING)
+endif()
+
 install(TARGETS curlio EXPORT ${PROJECT_NAME}-targets)
 install(
   DIRECTORY .

@@ -33,6 +33,7 @@ public:
 
 private:
 	friend class Basic_session<Executor>;
+	friend class Basic_response<Executor>;
 
 	std::shared_ptr<Basic_session<Executor>> _session;
 	CURL* _handle;

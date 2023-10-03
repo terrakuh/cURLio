@@ -44,7 +44,6 @@ inline auto Basic_response<Executor>::async_read_some(const auto& buffers, auto&
 		  CURLIO_ASIO_NS::dispatch(
 		    _session->get_strand(), [this, buffers, handler = std::move(handler)]() mutable {
 			    auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
-
 			    // Can immediately finish.
 			    if (_input_buffer.size() > 0) {
 				    const std::size_t copied = CURLIO_ASIO_NS::buffer_copy(buffers, _input_buffer.data());
@@ -111,13 +110,14 @@ inline Basic_response<Executor>::Basic_response(std::shared_ptr<Basic_session<Ex
 template<typename Executor>
 inline void Basic_response<Executor>::_mark_finished()
 {
-	CURLIO_INFO("Marked as finished");
+	CURLIO_INFO("Response marked as finished");
 	_finished = true;
 	_header_collector.finish();
 	if (_receive_handler) {
 		_receive_handler(CURLIO_ASIO_NS::error::eof, nullptr, 0);
 		_receive_handler.reset();
 	}
+	_request->_mark_finished();
 }
 
 template<typename Executor>
