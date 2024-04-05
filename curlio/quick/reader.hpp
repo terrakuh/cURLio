@@ -17,6 +17,7 @@ template<typename Executor>
 inline auto async_read_all(std::shared_ptr<Basic_response<Executor>> response, auto&& token,
                            std::size_t buffer_increment = 4096)
 {
+	auto executor = response->get_executor();
 	return CURLIO_ASIO_NS::async_compose<decltype(token), void(detail::asio_error_code, std::string)>(
 	  [response = std::move(response), buffer_increment, last_buffer_size = std::size_t{ 0 },
 	   buffer = std::string{}](auto& self, const detail::asio_error_code& ec = {},
@@ -43,7 +44,7 @@ inline auto async_read_all(std::shared_ptr<Basic_response<Executor>> response, a
 			    std::move(self));
 		  }
 	  },
-	  token, response->get_executor());
+	  token, std::move(executor));
 }
 
 } // namespace curlio::quick
