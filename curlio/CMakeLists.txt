@@ -1,17 +1,17 @@
 file(GLOB_RECURSE sources "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp")
 
-add_library(curlio INTERFACE ${sources})
-add_library(curlio::curlio ALIAS curlio)
-target_link_libraries(curlio INTERFACE CURL::libcurl Threads::Threads Boost::boost)
+add_library(cURLio INTERFACE ${sources})
+add_library(cURLio::cURLio ALIAS cURLio)
+target_link_libraries(cURLio INTERFACE CURL::libcurl Threads::Threads Boost::headers Boost::asio)
 target_include_directories(
-  curlio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>" $<INSTALL_INTERFACE:include>
+  cURLio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>" $<INSTALL_INTERFACE:include>
 )
 
 if(CURLIO_ENABLE_LOGGING)
-  target_compile_definitions(curlio INTERFACE CURLIO_ENABLE_LOGGING)
+  target_compile_definitions(cURLio INTERFACE CURLIO_ENABLE_LOGGING)
 endif()
 
-install(TARGETS curlio EXPORT ${PROJECT_NAME}-targets)
+install(TARGETS cURLio EXPORT ${PROJECT_NAME}-targets)
 install(
   DIRECTORY .
   DESTINATION include/${PROJECT_NAME}

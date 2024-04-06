@@ -1,45 +1,20 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(
-  curlio
+  cURLio
   VERSION 0.4.0
   DESCRIPTION "The simple glue for cURL and Boost.ASIO"
   HOMEPAGE_URL "https://github.com/terrakuh/curlio"
   LANGUAGES CXX
 )
 
-set(${PROJECT_NAME}_TOP_LEVEL ON)
-get_directory_property(parent_directory PARENT_DIRECTORY)
-if(parent_directory)
-  set(${PROJECT_NAME}_TOP_LEVEL OFF)
-endif()
-
-option(CURLIO_BUILD_EXAMPLES "The example programs." ${${PROJECT_NAME}_TOP_LEVEL})
-option(CURLIO_FETCH_DEPENDENCIES "Fetches the required dependencies automatically." OFF)
+option(CURLIO_BUILD_EXAMPLES "The example programs." ${CURLIO_TOP_LEVEL})
 option(CURLIO_ENABLE_LOGGING "Prints debug logs during execution." OFF)
 mark_as_advanced(CURLIO_ENABLE_LOGGING)
 
 find_package(CURL 7.21 REQUIRED)
 find_package(Threads REQUIRED)
-
-set(required "")
-if(NOT CURLIO_FETCH_DEPENDENCIES)
-  set(required REQUIRED)
-endif()
-
-find_package(Boost 1.78 ${required})
-if(NOT Boost_FOUND AND CURLIO_FETCH_DEPENDENCIES)
-  message(STATUS "Boost not found. Fetching from jfrog.io")
-  include(FetchContent)
-  FetchContent_Declare(
-    Boost
-    URL https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.gz
-    URL_HASH SHA256=c0685b68dd44cc46574cce86c4e17c0f611b15e195be9848dfd0769a0a207628
-  )
-  FetchContent_MakeAvailable(Boost)
-  FetchContent_GetProperties(Boost SOURCE_DIR Boost_INCLUDE_DIR)
-  find_package(Boost REQUIRED)
-endif()
+find_package(Boost 1.78 REQUIRED COMPONENTS asio)
 
 add_subdirectory(curlio)
 
@@ -71,7 +46,7 @@ install(
 )
 
 # CPack
-if(${PROJECT_NAME}_TOP_LEVEL)
+if(CURLIO_TOP_LEVEL)
   set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
   set(CPACK_PACKAGE_CONTACT "Yunus Ayar")
   set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
