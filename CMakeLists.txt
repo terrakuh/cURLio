@@ -14,7 +14,7 @@ mark_as_advanced(CURLIO_ENABLE_LOGGING)
 
 find_package(CURL 7.21 REQUIRED)
 find_package(Threads REQUIRED)
-find_package(Boost 1.78 REQUIRED COMPONENTS asio)
+find_package(Boost 1.78 REQUIRED)
 
 add_subdirectory(curlio)
 

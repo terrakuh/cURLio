@@ -2,7 +2,7 @@ file(GLOB_RECURSE sources "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp")
 
 add_library(cURLio INTERFACE ${sources})
 add_library(cURLio::cURLio ALIAS cURLio)
-target_link_libraries(cURLio INTERFACE CURL::libcurl Threads::Threads Boost::headers Boost::asio)
+target_link_libraries(cURLio INTERFACE CURL::libcurl Threads::Threads Boost::boost)
 target_include_directories(
   cURLio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>" $<INSTALL_INTERFACE:include>
 )
