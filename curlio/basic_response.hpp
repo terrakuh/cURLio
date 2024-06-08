@@ -22,8 +22,6 @@ public:
 	Basic_response(const Basic_response& copy) = delete;
 
 	template<CURLINFO Option>
-	auto get_info() const;
-	template<CURLINFO Option>
 	auto async_get_info(auto&& token) const;
 	auto async_read_some(const auto& buffers, auto&& token);
 	auto async_wait_headers(auto&& token);

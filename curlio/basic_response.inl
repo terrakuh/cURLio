@@ -10,13 +10,6 @@ namespace curlio {
 
 template<typename Executor>
 template<CURLINFO Option>
-inline auto Basic_response<Executor>::get_info() const
-{
-	return async_get_info<Option>(CURLIO_ASIO_NS::use_future).get();
-}
-
-template<typename Executor>
-template<CURLINFO Option>
 inline auto Basic_response<Executor>::async_get_info(auto&& token) const
 {
 	return CURLIO_ASIO_NS::async_initiate<decltype(token),
