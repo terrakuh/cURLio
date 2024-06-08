@@ -92,9 +92,8 @@ inline Basic_response<Executor>::executor_type Basic_response<Executor>::get_exe
 template<typename Executor>
 inline Basic_response<Executor>::Basic_response(std::shared_ptr<Basic_session<Executor>>&& session,
                                                 std::shared_ptr<Basic_request<Executor>>&& request)
-    : _session{ std::move(session) }, _request{ std::move(request) }, _header_collector{
-	      _request->native_handle()
-      }
+    : _session{ std::move(session) }, _request{ std::move(request) },
+      _header_collector{ _request->native_handle() }
 {
 	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEFUNCTION, &Basic_response::_write_callback);
 	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEDATA, this);

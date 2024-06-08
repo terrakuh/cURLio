@@ -75,18 +75,19 @@ inline Basic_session<Executor>::Basic_session(Executor executor) : _strand{ std:
 }
 
 template<typename Executor>
-inline void Basic_session<Executor>::_monitor(const std::shared_ptr<detail::Socket_data>& data,
-                                              detail::Socket_data::Wait_flag type)
+inline void Basic_session<Executor>::_monitor(const std::shared_ptr<detail::SocketData>& data,
+                                              detail::SocketData::WaitFlag type)
 {
+	CURLIO_TRACE("Monitoring on socket flags=" << data->wait_flags << " type=" << static_cast<int>(type));
 	if (data->wait_flags & type) {
 		data->socket.async_wait(
-		  type == detail::Socket_data::wait_flag_write ? CURLIO_ASIO_NS::socket_base::wait_write
-		                                               : CURLIO_ASIO_NS::socket_base::wait_read,
+		  type == detail::SocketData::wait_flag_write ? CURLIO_ASIO_NS::socket_base::wait_write
+		                                              : CURLIO_ASIO_NS::socket_base::wait_read,
 		  [this, type, data](const detail::asio_error_code& ec) {
-			  CURLIO_TRACE("Socket action occurred: " << ec.what());
+			  CURLIO_TRACE("Socket action occurred (flags=" << data->wait_flags << "): " << ec.what());
 			  if (!ec && data->wait_flags & type) {
 				  _perform(data->socket.native_handle(),
-				           type == detail::Socket_data::wait_flag_write ? CURL_CSELECT_OUT : CURL_CSELECT_IN);
+				           type == detail::SocketData::wait_flag_write ? CURL_CSELECT_OUT : CURL_CSELECT_IN);
 				  _monitor(data, type);
 			  }
 		  });
@@ -114,6 +115,8 @@ inline void Basic_session<Executor>::_clean_finished()
 			}
 
 			curl_multi_remove_handle(_multi_handle, message->easy_handle);
+		} else {
+			CURLIO_WARN("Got unknown message during cleaning: " << message->msg);
 		}
 	}
 }
@@ -137,7 +140,7 @@ inline int Basic_session<Executor>::_socket_callback(CURL* easy_handle, curl_soc
 {
 	constexpr const char* what_names[] = { "IN", "OUT", "IN/OUT", "REMOVE" };
 	CURLIO_TRACE("Socket action callback on " << socket << ": "
-	                                          << (what >= 1 && what <= 4 ? what_names[what - 1] : "unknwon"));
+	                                          << (what >= 1 && what <= 4 ? what_names[what - 1] : "unknown"));
 
 	const auto self = static_cast<Basic_session*>(self_ptr);
 
@@ -156,12 +159,12 @@ inline int Basic_session<Executor>::_socket_callback(CURL* easy_handle, curl_soc
 	}
 
 	if (what == CURL_POLL_IN || what == CURL_POLL_INOUT) {
-		data->wait_flags |= detail::Socket_data::wait_flag_read;
-		self->_monitor(data, detail::Socket_data::wait_flag_read);
+		data->wait_flags |= detail::SocketData::wait_flag_read;
+		self->_monitor(data, detail::SocketData::wait_flag_read);
 	}
 	if (what == CURL_POLL_OUT || what == CURL_POLL_INOUT) {
-		data->wait_flags |= detail::Socket_data::wait_flag_write;
-		self->_monitor(data, detail::Socket_data::wait_flag_write);
+		data->wait_flags |= detail::SocketData::wait_flag_write;
+		self->_monitor(data, detail::SocketData::wait_flag_write);
 	}
 
 	return CURLM_OK;
@@ -205,7 +208,7 @@ inline curl_socket_t Basic_session<Executor>::_open_socket_callback(void* self_p
 
 	if (protocol.has_value()) {
 		detail::asio_error_code ec{};
-		auto data = std::make_shared<detail::Socket_data>(CURLIO_ASIO_NS::ip::tcp::socket{ self->_strand });
+		auto data = std::make_shared<detail::SocketData>(CURLIO_ASIO_NS::ip::tcp::socket{ self->_strand });
 		data->socket.open(protocol.value(), ec);
 		if (!ec) {
 			const auto fd = data->socket.native_handle();

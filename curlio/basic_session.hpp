@@ -33,11 +33,11 @@ private:
 	CURLM* _multi_handle;
 	CURLIO_ASIO_NS::strand<Executor> _strand;
 	std::map<CURL*, response_pointer> _active_requests;
-	std::map<curl_socket_t, std::shared_ptr<detail::Socket_data>> _sockets;
+	std::map<curl_socket_t, std::shared_ptr<detail::SocketData>> _sockets;
 	CURLIO_ASIO_NS::steady_timer _timer{ _strand };
 
 	Basic_session(Executor executor);
-	void _monitor(const std::shared_ptr<detail::Socket_data>& data, detail::Socket_data::Wait_flag type);
+	void _monitor(const std::shared_ptr<detail::SocketData>& data, detail::SocketData::WaitFlag type);
 	void _clean_finished();
 	void _perform(curl_socket_t socket, int bitmask);
 	static int _socket_callback(CURL* easy_handle, curl_socket_t socket, int what, void* self_ptr,

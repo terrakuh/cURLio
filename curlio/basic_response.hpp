@@ -17,7 +17,7 @@ template<typename Executor>
 class Basic_response : public std::enable_shared_from_this<Basic_response<Executor>> {
 public:
 	using executor_type = Executor;
-	using headers_type  = detail::Header_collector::fields_type;
+	using headers_type  = detail::HeaderCollector::fields_type;
 
 	Basic_response(const Basic_response& copy) = delete;
 
@@ -35,7 +35,7 @@ private:
 	std::shared_ptr<Basic_request<Executor>> _request;
 	CURLIO_ASIO_NS::streambuf _input_buffer;
 	detail::Function<std::size_t(detail::asio_error_code, const char*, std::size_t)> _receive_handler;
-	detail::Header_collector _header_collector;
+	detail::HeaderCollector _header_collector;
 	bool _finished = false;
 
 	Basic_response(std::shared_ptr<Basic_session<Executor>>&& session,
