@@ -37,23 +37,24 @@ class HeaderCollector {
 public:
 	using fields_type = std::map<std::string, std::string, Case_insensitive_less>;
 
-	HeaderCollector(CURL* handle) : _handle{ handle }
-	{
-		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, &HeaderCollector::_header_callback);
-		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, this);
-	}
+	HeaderCollector(CURL* handle) noexcept : _handle{ handle } {}
 	HeaderCollector(const HeaderCollector& copy) = delete;
 	HeaderCollector(HeaderCollector&& move)      = delete;
 	~HeaderCollector()                           = default;
 
-	void finish()
+	void start() noexcept
 	{
+		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, &HeaderCollector::_header_callback);
+		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, this);
+	}
+	void stop() noexcept
+	{
+		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, nullptr);
+		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, nullptr);
 		if (_headers_received_handler) {
 			_headers_received_handler(CURLIO_ASIO_NS::error::eof);
 			_headers_received_handler.reset();
 		}
-		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, nullptr);
-		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, nullptr);
 	}
 	auto async_wait(auto&& fallback_executor, auto&& token)
 	{

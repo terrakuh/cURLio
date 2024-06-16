@@ -41,7 +41,7 @@ private:
 	detail::Function<std::size_t(detail::asio_error_code, char*, std::size_t)> _send_handler;
 
 	Basic_request(std::shared_ptr<Basic_session<Executor>>&& session);
-	void _mark_finished();
+	void _mark_finished() noexcept;
 	static std::size_t _read_callback(char* data, std::size_t size, std::size_t count, void* self_ptr) noexcept;
 };
 

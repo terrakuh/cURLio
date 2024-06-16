@@ -5,6 +5,7 @@
 #include <iostream>
 #include <numeric>
 #include <tuple>
+#include <fstream>
 
 using namespace boost::asio;
 
@@ -13,25 +14,17 @@ try {
 	auto session = curlio::make_session(co_await this_coro::executor);
 	auto request = curlio::make_request(session);
 
-	std::shared_ptr<curlio::Response> response{};
-	for (const auto url : { "http://example.com", "http://google.de" }) {
-		request->set_option<CURLOPT_URL>(url);
-		response = co_await session->async_start(request, use_awaitable);
-		co_await response->async_wait_headers(use_awaitable);
+	request->set_option<CURLOPT_URL>("http://127.0.0.1:8088/");
+	request->set_option<CURLOPT_MAXREDIRS>(3);
+	request->set_option<CURLOPT_FOLLOWLOCATION>(1);
 
-		std::uint64_t checksum = 0;
-		std::uint8_t data[4096]{};
-		while (true) {
-			const auto [ec, bytes_transferred] =
-			  co_await response->async_read_some(buffer(data), as_tuple(use_awaitable));
-			if (ec) {
-				std::cout << "Error: " << ec.message() << "\n";
-				break;
-			}
-			std::cout.write(reinterpret_cast<const char*>(data), bytes_transferred);
-			checksum = std::accumulate(data, data + bytes_transferred, checksum);
-		}
-		std::cout << "Checksum for '" << url << "' is " << checksum << "\n";
+	auto response = co_await session->async_start(request, use_awaitable);
+
+	std::ofstream file{"/workspaces/downer/backend/asd", std::ios::out|std::ios::binary};
+	char data[10*1024];
+	while (true) {
+		const std::size_t bytes_transferred = co_await response->async_read_some(buffer(data), use_awaitable);
+		file.write(data, bytes_transferred);
 	}
 } catch (const std::exception& e) {
 	std::cerr << "Failed with: " << e.what() << "\n";

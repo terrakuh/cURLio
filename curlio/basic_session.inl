@@ -3,6 +3,7 @@
 #include "basic_request.hpp"
 #include "basic_response.hpp"
 #include "basic_session.hpp"
+#include "detail/final_action.hpp"
 #include "log.hpp"
 
 #include <functional>
@@ -33,18 +34,33 @@ inline auto Basic_session<Executor>::async_start(request_pointer request, auto&&
 			    request->template set_option<CURLOPT_OPENSOCKETDATA>(this);
 			    request->template set_option<CURLOPT_CLOSESOCKETFUNCTION>(&Basic_session::_close_socket_callback);
 			    request->template set_option<CURLOPT_CLOSESOCKETDATA>(this);
+			    auto unregister_request = detail::finally([&] {
+				    request->template set_option<CURLOPT_OPENSOCKETFUNCTION>(nullptr);
+				    request->template set_option<CURLOPT_OPENSOCKETDATA>(nullptr);
+				    request->template set_option<CURLOPT_CLOSESOCKETFUNCTION>(nullptr);
+				    request->template set_option<CURLOPT_CLOSESOCKETDATA>(nullptr);
+			    });
 
 			    // Kick start.
 			    CURLIO_TRACE("Starting handle " << easy_handle);
 			    curl_multi_add_handle(_multi_handle, easy_handle);
 			    _perform(CURL_SOCKET_TIMEOUT, 0);
 
-			    std::shared_ptr<Response> response{ new Response{ this->shared_from_this(), std::move(request) } };
+			    const std::shared_ptr<Response> response{ new Response{ this->shared_from_this(), request } };
+			    response->_start();
+			    auto unregister_response = detail::finally([&] {
+				    response->_stop();
+				    _active_requests.erase(easy_handle);
+			    });
 			    _active_requests.insert({ easy_handle, response });
 
 			    auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
 			    CURLIO_ASIO_NS::post(std::move(executor),
-			                         std::bind(std::move(handler), detail::asio_error_code{}, std::move(response)));
+			                         std::bind(std::move(handler), detail::asio_error_code{}, response));
+
+			    // Everything went without exceptions.
+			    unregister_response.cancel();
+			    unregister_request.cancel();
 		    });
 	  },
 	  token);
@@ -105,13 +121,13 @@ inline void Basic_session<Executor>::_clean_finished()
 
 			const auto it = _active_requests.find(message->easy_handle);
 			if (it != _active_requests.end()) {
-				it->second->_mark_finished();
-				_active_requests.erase(it);
-
 				curl_easy_setopt(message->easy_handle, CURLOPT_OPENSOCKETFUNCTION, nullptr);
 				curl_easy_setopt(message->easy_handle, CURLOPT_OPENSOCKETDATA, nullptr);
 				curl_easy_setopt(message->easy_handle, CURLOPT_CLOSESOCKETFUNCTION, nullptr);
 				curl_easy_setopt(message->easy_handle, CURLOPT_CLOSESOCKETDATA, nullptr);
+
+				it->second->_stop();
+				_active_requests.erase(it);
 			}
 
 			curl_multi_remove_handle(_multi_handle, message->easy_handle);

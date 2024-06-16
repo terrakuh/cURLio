@@ -90,25 +90,35 @@ inline Basic_response<Executor>::executor_type Basic_response<Executor>::get_exe
 }
 
 template<typename Executor>
-inline Basic_response<Executor>::Basic_response(std::shared_ptr<Basic_session<Executor>>&& session,
-                                                std::shared_ptr<Basic_request<Executor>>&& request)
+inline Basic_response<Executor>::Basic_response(std::shared_ptr<Basic_session<Executor>> session,
+                                                std::shared_ptr<Basic_request<Executor>> request)
     : _session{ std::move(session) }, _request{ std::move(request) },
       _header_collector{ _request->native_handle() }
+{}
+
+template<typename Executor>
+inline void Basic_response<Executor>::_start() noexcept
 {
 	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEFUNCTION, &Basic_response::_write_callback);
 	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEDATA, this);
+	_header_collector.start();
 }
 
 template<typename Executor>
-inline void Basic_response<Executor>::_mark_finished()
+inline void Basic_response<Executor>::_stop() noexcept
 {
 	CURLIO_INFO("Response marked as finished");
+
+	_header_collector.stop();
+	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEFUNCTION, nullptr);
+	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEDATA, nullptr);
+
 	_finished = true;
-	_header_collector.finish();
 	if (_receive_handler) {
 		_receive_handler(CURLIO_ASIO_NS::error::eof, nullptr, 0);
 		_receive_handler.reset();
 	}
+
 	_request->_mark_finished();
 }
 

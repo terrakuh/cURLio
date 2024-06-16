@@ -13,6 +13,8 @@
 
 namespace curlio {
 
+using Headers = detail::HeaderCollector::fields_type;
+
 template<typename Executor>
 class Basic_response : public std::enable_shared_from_this<Basic_response<Executor>> {
 public:
@@ -38,9 +40,10 @@ private:
 	detail::HeaderCollector _header_collector;
 	bool _finished = false;
 
-	Basic_response(std::shared_ptr<Basic_session<Executor>>&& session,
-	               std::shared_ptr<Basic_request<Executor>>&& request);
-	void _mark_finished();
+	Basic_response(std::shared_ptr<Basic_session<Executor>> session,
+	               std::shared_ptr<Basic_request<Executor>> request);
+	void _start() noexcept;
+	void _stop() noexcept;
 	static std::size_t _write_callback(char* data, std::size_t size, std::size_t count,
 	                                   void* self_ptr) noexcept;
 };

@@ -119,7 +119,7 @@ inline Basic_request<Executor>::Basic_request(std::shared_ptr<Basic_session<Exec
 }
 
 template<typename Executor>
-inline void Basic_request<Executor>::_mark_finished()
+inline void Basic_request<Executor>::_mark_finished() noexcept
 {
 	CURLIO_INFO("Request marked as finished");
 	if (_send_handler) {
