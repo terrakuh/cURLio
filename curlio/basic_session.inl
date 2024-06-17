@@ -119,6 +119,8 @@ inline void Basic_session<Executor>::_clean_finished()
 		if (message->msg == CURLMSG_DONE) {
 			CURLIO_INFO("Removing handle: " << message->easy_handle);
 
+			curl_multi_remove_handle(_multi_handle, message->easy_handle);
+
 			const auto it = _active_requests.find(message->easy_handle);
 			if (it != _active_requests.end()) {
 				curl_easy_setopt(message->easy_handle, CURLOPT_OPENSOCKETFUNCTION, nullptr);
@@ -129,8 +131,6 @@ inline void Basic_session<Executor>::_clean_finished()
 				it->second->_stop();
 				_active_requests.erase(it);
 			}
-
-			curl_multi_remove_handle(_multi_handle, message->easy_handle);
 		} else {
 			CURLIO_WARN("Got unknown message during cleaning: " << message->msg);
 		}
