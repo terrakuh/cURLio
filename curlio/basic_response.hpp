@@ -4,11 +4,9 @@
 #include "detail/asio_include.hpp"
 #include "detail/function.hpp"
 #include "detail/header_collector.hpp"
-#include "detail/option_type.hpp"
 #include "fwd.hpp"
 
 #include <curl/curl.h>
-#include <map>
 #include <memory>
 
 namespace curlio {
@@ -16,32 +14,37 @@ namespace curlio {
 using Headers = detail::HeaderCollector::fields_type;
 
 template<typename Executor>
-class Basic_response : public std::enable_shared_from_this<Basic_response<Executor>> {
+class BasicResponse : public std::enable_shared_from_this<BasicResponse<Executor>> {
 public:
 	using executor_type = Executor;
-	using headers_type  = detail::HeaderCollector::fields_type;
+	using strand_type   = CURLIO_ASIO_NS::strand<executor_type>;
 
-	Basic_response(const Basic_response& copy) = delete;
+	BasicResponse(const BasicResponse& copy) = delete;
+	BasicResponse(BasicResponse&& move)      = delete;
 
 	template<CURLINFO Option>
 	auto async_get_info(auto&& token) const;
 	auto async_read_some(const auto& buffers, auto&& token);
 	auto async_wait_headers(auto&& token);
 	CURLIO_NO_DISCARD executor_type get_executor() const noexcept;
-	Basic_response& operator=(const Basic_response& copy) = delete;
+	CURLIO_NO_DISCARD strand_type& get_strand() noexcept;
+
+	BasicResponse& operator=(const BasicResponse& copy) = delete;
+	BasicResponse& operator=(BasicResponse&& move)      = delete;
 
 private:
-	friend class Basic_session<Executor>;
+	// Only the session may construct a response and call `_start()` / `_stop()`.
+	friend class BasicSession<Executor>;
 
-	std::shared_ptr<Basic_session<Executor>> _session;
-	std::shared_ptr<Basic_request<Executor>> _request;
-	CURLIO_ASIO_NS::streambuf _input_buffer;
-	detail::Function<std::size_t(detail::asio_error_code, const char*, std::size_t)> _receive_handler;
+	std::shared_ptr<strand_type> _strand;
+	std::shared_ptr<BasicRequest<Executor>> _request;
+	CURLIO_ASIO_NS::streambuf _input_buffer{};
+	detail::Function<std::size_t(detail::asio_error_code, const char*, std::size_t)> _receive_handler{};
 	detail::HeaderCollector _header_collector;
 	bool _finished = false;
 
-	Basic_response(std::shared_ptr<Basic_session<Executor>> session,
-	               std::shared_ptr<Basic_request<Executor>> request);
+	BasicResponse(std::shared_ptr<strand_type> strand,
+	              std::shared_ptr<BasicRequest<Executor>> request) noexcept;
 	void _start() noexcept;
 	void _stop() noexcept;
 	static std::size_t _write_callback(char* data, std::size_t size, std::size_t count,
@@ -49,8 +52,8 @@ private:
 };
 
 template<typename Executor>
-auto async_wait_last_headers(std::shared_ptr<Basic_response<Executor>> response, auto&& token);
+auto async_wait_last_headers(std::shared_ptr<BasicResponse<Executor>> response, auto&& token);
 
-using Response = Basic_response<CURLIO_ASIO_NS::any_io_executor>;
+using Response = BasicResponse<CURLIO_ASIO_NS::any_io_executor>;
 
 } // namespace curlio

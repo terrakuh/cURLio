@@ -5,7 +5,7 @@
 
 namespace curlio::detail {
 
-struct Case_insensitive_less {
+struct CaseInsensitiveLess {
 	std::locale locale{};
 
 	bool operator()(const std::string& lhs, const std::string& rhs) const noexcept

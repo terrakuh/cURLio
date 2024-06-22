@@ -35,7 +35,7 @@ constexpr std::string_view trim(std::string_view str, const std::locale& locale 
 /// separately.
 class HeaderCollector {
 public:
-	using fields_type = std::map<std::string, std::string, Case_insensitive_less>;
+	using fields_type = std::map<std::string, std::string, CaseInsensitiveLess>;
 
 	HeaderCollector(CURL* handle) noexcept : _handle{ handle } {}
 	HeaderCollector(const HeaderCollector& copy) = delete;

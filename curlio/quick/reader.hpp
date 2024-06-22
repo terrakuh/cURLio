@@ -14,7 +14,7 @@
 namespace curlio::quick {
 
 template<typename Executor>
-inline auto async_read_all(std::shared_ptr<Basic_response<Executor>> response, auto&& token,
+inline auto async_read_all(std::shared_ptr<BasicResponse<Executor>> response, auto&& token,
                            std::size_t buffer_increment = 4096)
 {
 	auto executor = response->get_executor();

@@ -12,31 +12,34 @@
 namespace curlio {
 
 template<typename Executor>
-class Basic_session : public std::enable_shared_from_this<Basic_session<Executor>> {
+class BasicSession {
 public:
 	using executor_type    = Executor;
-	using request_pointer  = std::shared_ptr<Basic_request<Executor>>;
-	using response_pointer = std::shared_ptr<Basic_response<Executor>>;
+	using strand_type      = CURLIO_ASIO_NS::strand<executor_type>;
+	using request_pointer  = std::shared_ptr<BasicRequest<Executor>>;
+	using response_pointer = std::shared_ptr<BasicResponse<Executor>>;
 
-	Basic_session(const Basic_session& copy) = delete;
-	~Basic_session() noexcept;
+	BasicSession(Executor executor);
+	BasicSession(const BasicSession& copy) = delete;
+	BasicSession(BasicSession&& move)      = delete;
+	~BasicSession();
 
 	auto async_start(request_pointer request, auto&& token);
 	CURLIO_NO_DISCARD executor_type get_executor() const noexcept;
-	CURLIO_NO_DISCARD CURLIO_ASIO_NS::strand<Executor>& get_strand() noexcept;
-	Basic_session& operator=(const Basic_session& copy) = delete;
+	CURLIO_NO_DISCARD strand_type& get_strand() noexcept;
 
-	template<typename Executor_>
-	friend std::shared_ptr<Basic_session<Executor_>> make_session(Executor_ executor);
+	BasicSession& operator=(const BasicSession& copy) = delete;
+	BasicSession& operator=(BasicSession&& move)      = delete;
 
 private:
+	friend class BasicRequest<Executor>;
+
 	CURLM* _multi_handle;
-	CURLIO_ASIO_NS::strand<Executor> _strand;
+	std::shared_ptr<strand_type> _strand;
 	std::map<CURL*, response_pointer> _active_requests;
 	std::map<curl_socket_t, std::shared_ptr<detail::SocketData>> _sockets;
-	CURLIO_ASIO_NS::steady_timer _timer{ _strand };
+	CURLIO_ASIO_NS::steady_timer _timer{ *_strand };
 
-	Basic_session(Executor executor);
 	void _monitor(const std::shared_ptr<detail::SocketData>& data, detail::SocketData::WaitFlag type);
 	void _clean_finished();
 	void _perform(curl_socket_t socket, int bitmask);
@@ -48,6 +51,6 @@ private:
 	static int _close_socket_callback(void* self_ptr, curl_socket_t socket) noexcept;
 };
 
-using Session = Basic_session<CURLIO_ASIO_NS::any_io_executor>;
+using Session = BasicSession<CURLIO_ASIO_NS::any_io_executor>;
 
 } // namespace curlio

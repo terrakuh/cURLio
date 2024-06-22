@@ -4,12 +4,12 @@ namespace curlio
 {
 
 template<typename Executor>
-class Basic_session;
+class BasicSession;
 
 template<typename Executor>
-class Basic_request;
+class BasicRequest;
 
 template<typename Executor>
-class Basic_response;
+class BasicResponse;
 
 }
