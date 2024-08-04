@@ -1,8 +1,8 @@
 #pragma once
 
-#include "basic_request.hpp"
 #include "basic_response.hpp"
 #include "basic_session.hpp"
+#include "detail/final_action.hpp"
 #include "log.hpp"
 
 #include <functional>
@@ -11,82 +11,104 @@
 namespace curlio {
 
 template<typename Executor>
-inline Basic_session<Executor>::~Basic_session() noexcept
+inline BasicSession<Executor>::BasicSession(Executor executor)
+    : _strand{ std::make_shared<strand_type>(CURLIO_ASIO_NS::make_strand(std::move(executor))) }
+{
+	_multi_handle = curl_multi_init();
+
+	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETFUNCTION, &BasicSession::_socket_callback);
+	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETDATA, this);
+
+	curl_multi_setopt(_multi_handle, CURLMOPT_TIMERFUNCTION, &BasicSession::_timer_callback);
+	curl_multi_setopt(_multi_handle, CURLMOPT_TIMERDATA, this);
+}
+
+template<typename Executor>
+inline BasicSession<Executor>::~BasicSession()
 {
 	_timer.cancel();
+
+	// TODO remove all active easy handles
 
 	curl_multi_cleanup(_multi_handle);
 }
 
 template<typename Executor>
-inline auto Basic_session<Executor>::async_start(request_pointer request, auto&& token)
+inline auto BasicSession<Executor>::async_start(request_pointer request, auto&& token)
 {
 	return CURLIO_ASIO_NS::async_initiate<decltype(token),
 	                                      void(detail::asio_error_code, std::shared_ptr<Response>)>(
 	  [this, request = std::move(request)](auto handler) mutable {
 		  CURLIO_ASIO_NS::dispatch(
-		    _strand, [this, request = std::move(request), handler = std::move(handler)]() mutable {
+		    *_strand, [this, request = std::move(request), handler = std::move(handler)]() mutable {
 			    const auto easy_handle = request->native_handle();
 
 			    // TODO error
-			    request->template set_option<CURLOPT_OPENSOCKETFUNCTION>(&Basic_session::_open_socket_callback);
+			    request->template set_option<CURLOPT_OPENSOCKETFUNCTION>(&BasicSession::_open_socket_callback);
 			    request->template set_option<CURLOPT_OPENSOCKETDATA>(this);
-			    request->template set_option<CURLOPT_CLOSESOCKETFUNCTION>(&Basic_session::_close_socket_callback);
+			    request->template set_option<CURLOPT_CLOSESOCKETFUNCTION>(&BasicSession::_close_socket_callback);
 			    request->template set_option<CURLOPT_CLOSESOCKETDATA>(this);
+			    auto unregister_request = detail::finally([&] {
+				    request->template set_option<CURLOPT_OPENSOCKETFUNCTION>(nullptr);
+				    request->template set_option<CURLOPT_OPENSOCKETDATA>(nullptr);
+				    request->template set_option<CURLOPT_CLOSESOCKETFUNCTION>(nullptr);
+				    request->template set_option<CURLOPT_CLOSESOCKETDATA>(nullptr);
+			    });
 
 			    // Kick start.
-			    CURLIO_TRACE("Starting handle " << easy_handle);
+			    CURLIO_TRACE("Kick-starting handle @" << easy_handle);
 			    curl_multi_add_handle(_multi_handle, easy_handle);
-			    _perform(CURL_SOCKET_TIMEOUT, 0);
+			    CURLIO_ASIO_NS::post(*_strand, [this] { _perform(CURL_SOCKET_TIMEOUT, 0); });
 
-			    std::shared_ptr<Response> response{ new Response{ this->shared_from_this(), std::move(request) } };
+			    const std::shared_ptr<Response> response{ new Response{ _strand, request } };
+			    response->_start();
+			    auto unregister_response = detail::finally([&] {
+				    CURLIO_ERROR("Something prevented lift-off @" << easy_handle);
+				    response->_stop();
+				    _active_requests.erase(easy_handle);
+			    });
 			    _active_requests.insert({ easy_handle, response });
 
 			    auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
 			    CURLIO_ASIO_NS::post(std::move(executor),
-			                         std::bind(std::move(handler), detail::asio_error_code{}, std::move(response)));
+			                         std::bind(std::move(handler), detail::asio_error_code{}, response));
+
+			    // Everything went without exceptions.
+			    unregister_response.cancel();
+			    unregister_request.cancel();
 		    });
 	  },
 	  token);
 }
 
 template<typename Executor>
-inline Basic_session<Executor>::executor_type Basic_session<Executor>::get_executor() const noexcept
+inline BasicSession<Executor>::executor_type BasicSession<Executor>::get_executor() const noexcept
 {
-	return _strand.get_inner_executor();
+	return _strand->get_inner_executor();
 }
 
 template<typename Executor>
-inline CURLIO_ASIO_NS::strand<Executor>& Basic_session<Executor>::get_strand() noexcept
+inline BasicSession<Executor>::strand_type& BasicSession<Executor>::get_strand() noexcept
 {
-	return _strand;
+	return *_strand;
 }
 
 template<typename Executor>
-inline Basic_session<Executor>::Basic_session(Executor executor) : _strand{ std::move(executor) }
+inline void BasicSession<Executor>::_monitor(const std::shared_ptr<detail::SocketData>& data,
+                                             detail::SocketData::WaitFlag type)
 {
-	_multi_handle = curl_multi_init();
-
-	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETFUNCTION, &Basic_session::_socket_callback);
-	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETDATA, this);
-
-	curl_multi_setopt(_multi_handle, CURLMOPT_TIMERFUNCTION, &Basic_session::_timer_callback);
-	curl_multi_setopt(_multi_handle, CURLMOPT_TIMERDATA, this);
-}
-
-template<typename Executor>
-inline void Basic_session<Executor>::_monitor(const std::shared_ptr<detail::Socket_data>& data,
-                                              detail::Socket_data::Wait_flag type)
-{
+	CURLIO_TRACE("Monitoring on socket #" << data->socket.native_handle() << " flags=" << data->wait_flags
+	                                      << " type=" << static_cast<int>(type));
 	if (data->wait_flags & type) {
 		data->socket.async_wait(
-		  type == detail::Socket_data::wait_flag_write ? CURLIO_ASIO_NS::socket_base::wait_write
-		                                               : CURLIO_ASIO_NS::socket_base::wait_read,
+		  type == detail::SocketData::wait_flag_write ? CURLIO_ASIO_NS::socket_base::wait_write
+		                                              : CURLIO_ASIO_NS::socket_base::wait_read,
 		  [this, type, data](const detail::asio_error_code& ec) {
-			  CURLIO_TRACE("Socket action occurred: " << ec.what());
+			  CURLIO_TRACE("Socket #" << data->socket.native_handle()
+			                          << " action occurred (flags=" << data->wait_flags << "): " << ec.what());
 			  if (!ec && data->wait_flags & type) {
 				  _perform(data->socket.native_handle(),
-				           type == detail::Socket_data::wait_flag_write ? CURL_CSELECT_OUT : CURL_CSELECT_IN);
+				           type == detail::SocketData::wait_flag_write ? CURL_CSELECT_OUT : CURL_CSELECT_IN);
 				  _monitor(data, type);
 			  }
 		  });
@@ -94,56 +116,77 @@ inline void Basic_session<Executor>::_monitor(const std::shared_ptr<detail::Sock
 }
 
 template<typename Executor>
-inline void Basic_session<Executor>::_clean_finished()
+inline void BasicSession<Executor>::_clean_finished()
 {
-	CURLMsg* message = nullptr;
-	int left         = 0;
+	const auto unregister = [&](typename decltype(_active_requests)::iterator it) {
+		CURLIO_ASSERT(it != _active_requests.end());
+
+		curl_multi_remove_handle(_multi_handle, it->first);
+
+		curl_easy_setopt(it->first, CURLOPT_OPENSOCKETFUNCTION, nullptr);
+		curl_easy_setopt(it->first, CURLOPT_OPENSOCKETDATA, nullptr);
+		curl_easy_setopt(it->first, CURLOPT_CLOSESOCKETFUNCTION, nullptr);
+		curl_easy_setopt(it->first, CURLOPT_CLOSESOCKETDATA, nullptr);
+
+		it->second->_stop();
+		return _active_requests.erase(it);
+	};
+
+	const std::size_t active_count = _active_requests.size();
+	CURLMsg* message               = nullptr;
+	int left                       = 0;
 	while ((message = curl_multi_info_read(_multi_handle, &left))) {
 		if (message->msg == CURLMSG_DONE) {
-			CURLIO_INFO("Removing handle: " << message->easy_handle);
-
-			const auto it = _active_requests.find(message->easy_handle);
-			if (it != _active_requests.end()) {
-				it->second->_mark_finished();
-				_active_requests.erase(it);
-
-				curl_easy_setopt(message->easy_handle, CURLOPT_OPENSOCKETFUNCTION, nullptr);
-				curl_easy_setopt(message->easy_handle, CURLOPT_OPENSOCKETDATA, nullptr);
-				curl_easy_setopt(message->easy_handle, CURLOPT_CLOSESOCKETFUNCTION, nullptr);
-				curl_easy_setopt(message->easy_handle, CURLOPT_CLOSESOCKETDATA, nullptr);
-			}
-
-			curl_multi_remove_handle(_multi_handle, message->easy_handle);
+			CURLIO_INFO("Removing handle @" << message->easy_handle);
+			unregister(_active_requests.find(message->easy_handle));
+		} else {
+			CURLIO_WARN("Got unknown message '" << message->msg << "' during cleaning for @"
+			                                    << message->easy_handle);
 		}
+	}
+
+	// Unregister all active request that have no other owner.
+	for (auto it = _active_requests.begin(); it != _active_requests.end();) {
+		if (it->second.use_count() == 1) {
+			CURLIO_INFO("Stale handle @" << it->first << " found in active requests");
+			it = unregister(it);
+		} else {
+			++it;
+		}
+	}
+
+	if (active_count != _active_requests.size()) {
+		CURLIO_INFO("Cleaned " << active_count - _active_requests.size() << " handles and left with "
+		                       << _active_requests.size() << " active ones");
 	}
 }
 
 template<typename Executor>
-inline void Basic_session<Executor>::_perform(curl_socket_t socket, int bitmask)
+inline void BasicSession<Executor>::_perform(curl_socket_t socket, int bitmask)
 {
 	int running = 0;
 	if (const auto code = curl_multi_socket_action(_multi_handle, socket, bitmask, &running);
 	    code != CURLM_OK) {
-		CURLIO_ERROR("Action failed: " << curl_multi_strerror(code));
+		CURLIO_ERROR("Action failed on socket #" << socket << ": " << curl_multi_strerror(code));
 	}
-	CURLIO_TRACE("Action performed for " << socket << " with bitmask " << bitmask << " and remaining handles "
-	                                     << running);
+	CURLIO_TRACE("Action performed for socket #" << socket << " with bitmask " << bitmask
+	                                             << " and running handles " << running);
 	_clean_finished();
 }
 
 template<typename Executor>
-inline int Basic_session<Executor>::_socket_callback(CURL* easy_handle, curl_socket_t socket, int what,
-                                                     void* self_ptr, void* socket_data_ptr) noexcept
+inline int BasicSession<Executor>::_socket_callback(CURL* easy_handle, curl_socket_t socket, int what,
+                                                    void* self_ptr, void* socket_data_ptr) noexcept
 {
 	constexpr const char* what_names[] = { "IN", "OUT", "IN/OUT", "REMOVE" };
-	CURLIO_TRACE("Socket action callback on " << socket << ": "
-	                                          << (what >= 1 && what <= 4 ? what_names[what - 1] : "unknwon"));
+	CURLIO_TRACE("Action callback on socket #" << socket << " in handle @" << easy_handle << ": "
+	                                           << (what >= 1 && what <= 4 ? what_names[what - 1] : "unknown"));
 
-	const auto self = static_cast<Basic_session*>(self_ptr);
+	const auto self = static_cast<BasicSession*>(self_ptr);
 
 	const auto it = self->_sockets.find(socket);
 	if (it == self->_sockets.end()) {
-		CURLIO_WARN("Socket " << socket << " not found");
+		CURLIO_WARN("Socket #" << socket << " in handle @" << easy_handle << " was not found");
 		return CURLM_OK;
 	}
 
@@ -156,30 +199,35 @@ inline int Basic_session<Executor>::_socket_callback(CURL* easy_handle, curl_soc
 	}
 
 	if (what == CURL_POLL_IN || what == CURL_POLL_INOUT) {
-		data->wait_flags |= detail::Socket_data::wait_flag_read;
-		self->_monitor(data, detail::Socket_data::wait_flag_read);
+		data->wait_flags |= detail::SocketData::wait_flag_read;
+		self->_monitor(data, detail::SocketData::wait_flag_read);
 	}
 	if (what == CURL_POLL_OUT || what == CURL_POLL_INOUT) {
-		data->wait_flags |= detail::Socket_data::wait_flag_write;
-		self->_monitor(data, detail::Socket_data::wait_flag_write);
+		data->wait_flags |= detail::SocketData::wait_flag_write;
+		self->_monitor(data, detail::SocketData::wait_flag_write);
 	}
 
 	return CURLM_OK;
 }
 
 template<typename Executor>
-inline int Basic_session<Executor>::_timer_callback(CURLM* multi_handle, long timeout_ms,
-                                                    void* self_ptr) noexcept
+inline int BasicSession<Executor>::_timer_callback(CURLM* multi_handle, long timeout_ms,
+                                                   void* self_ptr) noexcept
 {
-	CURLIO_DEBUG("Adding timer with timeout of " << timeout_ms << " ms");
-
-	const auto self = static_cast<Basic_session*>(self_ptr)->shared_from_this();
+	const auto self = static_cast<BasicSession*>(self_ptr);
 	if (timeout_ms == -1) {
+		CURLIO_DEBUG("Removing timer");
 		self->_timer.cancel();
 	} else {
+		if (timeout_ms == 0) {
+			CURLIO_DEBUG("Adding immediate timer");
+		} else {
+			CURLIO_DEBUG("Adding timer with timeout of " << timeout_ms << " ms");
+		}
+
 		self->_timer.expires_after(std::chrono::milliseconds{ timeout_ms });
 		self->_timer.async_wait([self](const detail::asio_error_code& ec) {
-			CURLIO_DEBUG("Timeout with ec=" << ec.message());
+			CURLIO_DEBUG("Timeout occurred ec=" << ec.message());
 			if (!ec) {
 				self->_perform(CURL_SOCKET_TIMEOUT, 0);
 			}
@@ -190,11 +238,11 @@ inline int Basic_session<Executor>::_timer_callback(CURLM* multi_handle, long ti
 }
 
 template<typename Executor>
-inline curl_socket_t Basic_session<Executor>::_open_socket_callback(void* self_ptr, curlsocktype purpose,
-                                                                    curl_sockaddr* address) noexcept
+inline curl_socket_t BasicSession<Executor>::_open_socket_callback(void* self_ptr, curlsocktype purpose,
+                                                                   curl_sockaddr* address) noexcept
 {
-	CURLIO_TRACE("Trying to open new socket with family=" << address->family);
-	const auto self = static_cast<Basic_session*>(self_ptr);
+	CURLIO_TRACE("Trying to open new socket with family=" << address->family << " purpose=" << purpose);
+	const auto self = static_cast<BasicSession*>(self_ptr);
 
 	std::optional<CURLIO_ASIO_NS::ip::tcp> protocol{};
 	if (address->family == AF_INET) {
@@ -205,26 +253,26 @@ inline curl_socket_t Basic_session<Executor>::_open_socket_callback(void* self_p
 
 	if (protocol.has_value()) {
 		detail::asio_error_code ec{};
-		auto data = std::make_shared<detail::Socket_data>(CURLIO_ASIO_NS::ip::tcp::socket{ self->_strand });
-		data->socket.open(protocol.value(), ec);
+		auto data = std::make_shared<detail::SocketData>(CURLIO_ASIO_NS::ip::tcp::socket{ self->get_strand() });
+		static_cast<void>(data->socket.open(protocol.value(), ec));
 		if (!ec) {
 			const auto fd = data->socket.native_handle();
-			CURLIO_INFO("New socket opened: " << fd);
+			CURLIO_INFO("New socket #" << fd << " opened");
 			self->_sockets.insert({ fd, std::move(data) });
 			return fd;
 		}
 	}
 
-	CURLIO_ERROR("Failed to open socket. Purpose=" << purpose << ", family=" << address->family);
+	CURLIO_ERROR("Failed to open socket");
 	return CURL_SOCKET_BAD;
 }
 
 template<typename Executor>
-inline int Basic_session<Executor>::_close_socket_callback(void* self_ptr, curl_socket_t socket) noexcept
+inline int BasicSession<Executor>::_close_socket_callback(void* self_ptr, curl_socket_t socket) noexcept
 {
-	const auto self = static_cast<Basic_session*>(self_ptr);
+	const auto self = static_cast<BasicSession*>(self_ptr);
 
-	CURLIO_INFO("Closing socket: " << socket);
+	CURLIO_INFO("Closing socket #" << socket);
 	if (const auto it = self->_sockets.find(socket); it != self->_sockets.end()) {
 		detail::asio_error_code ec{};
 		it->second->socket.close(ec);
@@ -233,16 +281,11 @@ inline int Basic_session<Executor>::_close_socket_callback(void* self_ptr, curl_
 			return CURLE_UNKNOWN_OPTION;
 		}
 	} else {
+		CURLIO_WARN("Socket #" << socket << " is unkown in socket map");
 		return close(socket);
 	}
 
 	return CURLE_OK;
-}
-
-template<typename Executor>
-CURLIO_NO_DISCARD inline std::shared_ptr<Basic_session<Executor>> make_session(Executor executor)
-{
-	return std::shared_ptr<Basic_session<Executor>>{ new Basic_session<Executor>{ std::move(executor) } };
 }
 
 } // namespace curlio

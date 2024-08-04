@@ -4,8 +4,8 @@
 
 namespace curlio::detail {
 
-struct Socket_data {
-	enum Wait_flag {
+struct SocketData {
+	enum WaitFlag {
 		wait_flag_write = 0x1,
 		wait_flag_read  = 0x2,
 	};

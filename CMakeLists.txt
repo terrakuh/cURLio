@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(
   cURLio
-  VERSION 0.4.0
+  VERSION 0.5.0
   DESCRIPTION "The simple glue for cURL and Boost.ASIO"
   HOMEPAGE_URL "https://github.com/terrakuh/curlio"
   LANGUAGES CXX

@@ -1,8 +1,10 @@
 #pragma once
 
 #include "../error.hpp"
+#include "../log.hpp"
 #include "asio_include.hpp"
 #include "case_insensitive_less.hpp"
+#include "function.hpp"
 
 #include <curl/curl.h>
 #include <locale>
@@ -31,23 +33,24 @@ constexpr std::string_view trim(std::string_view str, const std::locale& locale 
 
 /// Hooks into the header callbacks of cURL and parses the header fields. Hook management must be done
 /// separately.
-class Header_collector {
+class HeaderCollector {
 public:
-	using fields_type = std::map<std::string, std::string, Case_insensitive_less>;
+	using fields_type = std::map<std::string, std::string, CaseInsensitiveLess>;
 
-	Header_collector(CURL* handle) : _handle{ handle }
+	HeaderCollector(CURL* handle) noexcept : _handle{ handle } {}
+	HeaderCollector(const HeaderCollector& copy) = delete;
+	HeaderCollector(HeaderCollector&& move)      = delete;
+	~HeaderCollector()                           = default;
+
+	void start() noexcept
 	{
-		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, &Header_collector::_header_callback);
+		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, &HeaderCollector::_header_callback);
 		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, this);
 	}
-	Header_collector(const Header_collector& copy) = delete;
-	~Header_collector() noexcept
+	void stop() noexcept
 	{
 		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, nullptr);
 		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, nullptr);
-	}
-	void finish()
-	{
 		if (_headers_received_handler) {
 			_headers_received_handler(CURLIO_ASIO_NS::error::eof);
 			_headers_received_handler.reset();
@@ -82,6 +85,9 @@ public:
 		  token, std::forward<decltype(fallback_executor)>(fallback_executor));
 	}
 
+	HeaderCollector& operator=(const HeaderCollector& copy) = delete;
+	HeaderCollector& operator=(HeaderCollector&& move)      = delete;
+
 private:
 	fields_type _fields;
 	CURL* _handle;
@@ -94,26 +100,30 @@ private:
 	                                    void* self_ptr) noexcept
 	{
 		static std::locale locale{};
-		const auto self                = static_cast<Header_collector*>(self_ptr);
+		const auto self                = static_cast<HeaderCollector*>(self_ptr);
 		const std::size_t total_length = size * count;
+
+		CURLIO_TRACE("Received " << total_length << " bytes of headers");
 
 		// New header segment -> clear old fields.
 		if (self->_last_clear < self->_headers_received) {
+			CURLIO_TRACE("Cleaning headers because of new segment");
 			self->_fields.clear();
 			self->_last_clear++;
 		}
 
 		// Add header to map.
 		const auto end       = buffer + total_length;
-		const auto seperator = std::find(buffer, end, ':');
-		if (seperator != end) {
-			std::string key{ buffer, static_cast<std::size_t>(seperator - buffer) };
-			std::string value{ trim({ seperator + 1, static_cast<std::size_t>(end - seperator - 1) }, locale) };
+		const auto separator = std::find(buffer, end, ':');
+		if (separator != end) {
+			std::string key{ buffer, static_cast<std::size_t>(separator - buffer) };
+			std::string value{ trim({ separator + 1, static_cast<std::size_t>(end - separator - 1) }, locale) };
 			self->_fields.insert({ std::move(key), std::move(value) });
 		}
 
 		// End of header.
 		if (total_length == 2) {
+			CURLIO_TRACE("End of header: waiter=" << static_cast<bool>(self->_headers_received_handler));
 			self->_headers_received++;
 			self->_ready_to_await = true;
 			if (self->_headers_received_handler) {

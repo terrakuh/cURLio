@@ -6,6 +6,7 @@ target_link_libraries(cURLio INTERFACE CURL::libcurl Threads::Threads Boost::boo
 target_include_directories(
   cURLio INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>" $<INSTALL_INTERFACE:include>
 )
+target_compile_features(cURLio INTERFACE cxx_std_17)
 
 if(CURLIO_ENABLE_LOGGING)
   target_compile_definitions(cURLio INTERFACE CURLIO_ENABLE_LOGGING)
