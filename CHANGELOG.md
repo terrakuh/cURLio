@@ -1,5 +1,16 @@
 # Change Log
 
+<h2><a href="https://github.com/terrakuh/curlio/compare/v0.4..v0.5.0">v0.5.0</a> - 2024-08-04</h2>
+
+### Changed
+- Less relying on pointers
+- CMake target name `cURLio::cURLio`
+
+### Fixed
+- Fix segfaults on kick-starting new requests
+- Fix CURL deprecation warnings
+- Various bugs
+
 <h2><a href="https://github.com/terrakuh/curlio/compare/v0.3.3..v0.4">v0.4</a> - 2022-11-27</h2>
 
 ### Changed
