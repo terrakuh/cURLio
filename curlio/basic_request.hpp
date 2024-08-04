@@ -24,6 +24,7 @@ public:
 	template<CURLoption Option>
 	void set_option(detail::option_type<Option> value);
 	void append_header(const char* header);
+	void free_headers();
 	auto async_write_some(const auto& buffers, auto&& token);
 	auto async_abort(auto&& token);
 	CURLIO_NO_DISCARD CURL* native_handle() const noexcept;
