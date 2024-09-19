@@ -11,15 +11,15 @@ The following examples uses the [coroutines](https://en.cppreference.com/w/cpp/l
 ```cpp
 asio::io_service service{};
 
-auto session = curlio::make_session<boost::asio::any_io_executor>(service.get_executor());
+curlio::Session session{ service.get_executor() };
 
 // Create request and set options.
-auto request = curlio::make_request(session);
+auto request = std::make_shared<curlio::Request>(session);
 request->set_option<CURLOPT_URL>("http://example.com");
 request->set_option<CURLOPT_USERAGENT>("cURLio");
 
 // Launches the request which will then run in the background.
-auto response = co_await session->async_start(request, asio::use_awaitable);
+auto response = co_await session.async_start(request, asio::use_awaitable);
 
 // Read all and do something with the data.
 char data[4096];
@@ -52,8 +52,8 @@ cmake --install curlio/build
 And then in your `CMakeLists.txt`:
 
 ```cmake
-find_package(curlio 0.4 REQUIRED)
-target_link_libraries(my-target PRIVATE curlio::curlio)
+find_package(cURLio 0.5 REQUIRED)
+target_link_libraries(my-target PRIVATE cURLio::cURLio)
 ```
 
 ## Debugging

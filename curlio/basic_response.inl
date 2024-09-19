@@ -150,7 +150,8 @@ inline std::size_t BasicResponse<Executor>::_write_callback(char* data, std::siz
 	if (self->_receive_handler) {
 		const std::size_t immediately_consumed = self->_receive_handler({}, data, total_length);
 		self->_receive_handler.reset();
-		CURLIO_TRACE("Received " << total_length << " bytes and consumed " << immediately_consumed);
+		CURLIO_TRACE("Received " << total_length << " bytes and consumed " << immediately_consumed
+		                         << " for handle @" << self->_request->_handle);
 
 		const std::size_t copied = CURLIO_ASIO_NS::buffer_copy(
 		  self->_input_buffer.prepare(total_length - immediately_consumed),
@@ -159,7 +160,7 @@ inline std::size_t BasicResponse<Executor>::_write_callback(char* data, std::siz
 		return immediately_consumed + copied;
 	}
 
-	CURLIO_TRACE("Received " << total_length << " bytes but pausing");
+	CURLIO_TRACE("Received " << total_length << " bytes but pausing handle @" << self->_request->_handle);
 	return CURL_WRITEFUNC_PAUSE;
 }
 

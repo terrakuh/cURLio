@@ -14,17 +14,17 @@ int main(int argc, char** argv)
 	curl_global_init(CURL_GLOBAL_ALL);
 	io_service service;
 
-	auto session = curlio::make_session<any_io_executor>(service.get_executor());
+	curlio::Session session{ service.get_executor() };
 	co_spawn(
 	  service,
 	  [&]() -> awaitable<void> {
 		  // Create request and set options.
-		  auto request = curlio::make_request(session);
+		  auto request = std::make_shared<curlio::Request>(session);
 		  curl_easy_setopt(request->native_handle(), CURLOPT_URL, "http://example.com");
 		  curl_easy_setopt(request->native_handle(), CURLOPT_USERAGENT, "cURLio");
 
 		  // Launches the request which will then run in the background.
-		  auto response = co_await session->async_start(request, use_awaitable);
+		  auto response = co_await session.async_start(request, use_awaitable);
 
 		  co_await response->async_wait_headers(use_awaitable);
 
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 
 		  // When all data was read and the `response->async_read_some()` returned `asio::error::eof`
 		  // the request is removed from the session and can be used again.
-			std::cout << "All transfers done\n";
+		  std::cout << "All transfers done\n";
 	  },
 	  detached);
 

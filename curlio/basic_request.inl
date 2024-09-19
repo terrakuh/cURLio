@@ -29,8 +29,9 @@ inline BasicRequest<Executor>::BasicRequest(const BasicRequest& copy) noexcept :
 template<typename Executor>
 inline BasicRequest<Executor>::~BasicRequest()
 {
+	CURLIO_DEBUG("Freeing handle @" << _handle);
 	curl_easy_cleanup(_handle);
-	curl_slist_free_all(_additional_headers);
+	free_headers();
 }
 
 template<typename Executor>
@@ -47,6 +48,13 @@ inline void BasicRequest<Executor>::append_header(const char* header)
 {
 	_additional_headers = curl_slist_append(_additional_headers, header);
 	set_option<CURLOPT_HTTPHEADER>(_additional_headers);
+}
+
+template<typename Executor>
+inline void BasicRequest<Executor>::free_headers()
+{
+	curl_slist_free_all(_additional_headers);
+	_additional_headers = nullptr;
 }
 
 template<typename Executor>
