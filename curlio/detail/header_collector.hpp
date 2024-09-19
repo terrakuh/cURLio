@@ -75,9 +75,20 @@ public:
 				                                 fields_type{}));
 			  } // Need to wait.
 			  else {
+#if CURLIO_ASIO_HAS_CANCEL
+				  if (auto slot = boost::asio::get_associated_cancellation_slot(handler); slot.is_connected()) {
+					  slot.assign([this](boost::asio::cancellation_type /* type */) {
+						  _headers_received_handler(boost::asio::error::operation_aborted);
+						  _headers_received_handler.reset();
+					  });
+				  }
+#endif
+
 				  _headers_received_handler = [this, executor = std::move(executor),
 				                               handler = std::move(handler)](asio_error_code ec) mutable {
-					  _ready_to_await = false;
+					  if (!ec) {
+						  _ready_to_await = false;
+					  }
 					  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), ec, std::move(_fields)));
 				  };
 			  }

@@ -62,6 +62,15 @@ inline auto BasicRequest<Executor>::async_write_some(const auto& buffers, auto&&
 				    std::move(executor),
 				    std::bind(std::move(handler), make_error_code(Code::multiple_writes), std::size_t{ 0 }));
 			  } else {
+#if CURLIO_ASIO_HAS_CANCEL
+				  if (auto slot = boost::asio::get_associated_cancellation_slot(handler); slot.is_connected()) {
+					  slot.assign([this](boost::asio::cancellation_type /* type */) {
+						  _send_handler(boost::asio::error::operation_aborted, nullptr, 0);
+						  _send_handler.reset();
+					  });
+				  }
+#endif
+
 				  _send_handler = [this, buffers = std::move(buffers), handler = std::move(handler),
 				                   executor = std::move(executor)](detail::asio_error_code ec, char* data,
 				                                                   std::size_t size) mutable {
@@ -89,6 +98,15 @@ inline auto BasicRequest<Executor>::async_abort(auto&& token)
 				  _send_handler(CURLIO_ASIO_NS::error::operation_aborted, nullptr, 0);
 				  _send_handler.reset();
 			  }
+
+#if CURLIO_ASIO_HAS_CANCEL
+			  if (auto slot = boost::asio::get_associated_cancellation_slot(handler); slot.is_connected()) {
+				  slot.assign([this](boost::asio::cancellation_type /* type */) {
+					  _send_handler(boost::asio::error::operation_aborted, nullptr, 0);
+					  _send_handler.reset();
+				  });
+			  }
+#endif
 
 			  auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
 

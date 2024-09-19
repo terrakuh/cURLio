@@ -3,39 +3,59 @@
 
 #include <curlio/curlio.hpp>
 #include <iostream>
-#include <numeric>
-#include <tuple>
-#include <fstream>
 
 using namespace boost::asio;
 
-awaitable<void> async_main()
-try {
-	auto session = curlio::make_session(co_await this_coro::executor);
-	auto request = curlio::make_request(session);
+awaitable<curlio::Headers> await_headers(curlio::Response& response, unsigned int max_redirects)
+{
+	for (unsigned int i = 0; true; ++i) {
+		auto headers     = co_await response.async_wait_headers(use_awaitable);
+		const int status = co_await response.async_get_info<CURLINFO_RESPONSE_CODE>(use_awaitable);
+		if (status < 300 || status >= 400) {
+			std::cout << "Final headers received\n";
+			co_return headers;
+		} else if (i == max_redirects) {
+			break;
+		}
+		std::cout << "Waiting for next header: " << headers.size() << " status: " << status << "\n";
+	}
+	throw std::runtime_error{ "max redirects" };
+}
 
-	request->set_option<CURLOPT_URL>("http://127.0.0.1:8088/");
+awaitable<void> async_main()
+{
+	curlio::Session session{ co_await this_coro::executor };
+
+	auto request = std::make_shared<curlio::Request>(session);
+	request->set_option<CURLOPT_URL>("http://localhost:8088");
 	request->set_option<CURLOPT_MAXREDIRS>(3);
 	request->set_option<CURLOPT_FOLLOWLOCATION>(1);
 
-	auto response = co_await session->async_start(request, use_awaitable);
+	std::shared_ptr<curlio::Response> response{};
 
-	std::ofstream file{"/workspaces/downer/backend/asd", std::ios::out|std::ios::binary};
-	char data[10*1024];
-	while (true) {
-		const std::size_t bytes_transferred = co_await response->async_read_some(buffer(data), use_awaitable);
-		file.write(data, bytes_transferred);
+	for (int i = 0; i < 2; ++i) {
+		response           = co_await session.async_start(request, use_awaitable);
+		const auto headers = co_await await_headers(*response, 3);
+		const int status   = co_await response->async_get_info<CURLINFO_RESPONSE_CODE>(use_awaitable);
+		std::cout << "Got " << headers.size() << " headers\n";
+		std::cout << "Status: " << status << "\n";
+
+		std::size_t bytes_transferred = 0;
+		try {
+			char data[10 * 1024];
+			while (true) {
+				bytes_transferred += co_await response->async_read_some(buffer(data), use_awaitable);
+			}
+		} catch (const std::exception& e) {
+		}
+		std::cout << "Finished with " << bytes_transferred << " bytes\n";
 	}
-} catch (const std::exception& e) {
-	std::cerr << "Failed with: " << e.what() << "\n";
 }
 
 int main(int argc, char** argv)
 {
 	curl_global_init(CURL_GLOBAL_ALL);
 	io_service service{};
-
-	auto session = curlio::make_session<boost::asio::any_io_executor>(service.get_executor());
 
 	co_spawn(service, async_main(), detached);
 

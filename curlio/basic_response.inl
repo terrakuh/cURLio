@@ -52,6 +52,15 @@ inline auto BasicResponse<Executor>::async_read_some(const auto& buffers, auto&&
 				    std::bind(std::move(handler), make_error_code(Code::multiple_reads), std::size_t{ 0 }));
 			  } // Wait for more data.
 			  else {
+#if CURLIO_ASIO_HAS_CANCEL
+				  if (auto slot = boost::asio::get_associated_cancellation_slot(handler); slot.is_connected()) {
+					  slot.assign([this](boost::asio::cancellation_type /* type */) {
+						  _receive_handler(boost::asio::error::operation_aborted, nullptr, 0);
+						  _receive_handler.reset();
+					  });
+				  }
+#endif
+
 				  _receive_handler = [this, buffers = std::move(buffers), executor = std::move(executor),
 				                      handler = std::move(handler)](detail::asio_error_code ec, const char* data,
 				                                                    std::size_t size) mutable {

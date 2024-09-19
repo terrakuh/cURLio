@@ -33,8 +33,6 @@ public:
 	BasicRequest& operator=(const BasicRequest& copy) = delete;
 	BasicRequest& operator=(BasicRequest&& move)      = delete;
 
-	static std::shared_ptr<BasicRequest> make_request(BasicSession<Executor>& session);
-
 private:
 	friend class BasicSession<Executor>;
 	friend class BasicResponse<Executor>;
