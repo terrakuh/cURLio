@@ -2,8 +2,8 @@
 
 #include "basic_response.hpp"
 #include "basic_session.hpp"
+#include "debug.hpp"
 #include "detail/final_action.hpp"
-#include "log.hpp"
 
 #include <functional>
 #include <optional>
@@ -16,11 +16,13 @@ inline BasicSession<Executor>::BasicSession(Executor executor)
 {
 	_multi_handle = curl_multi_init();
 
-	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETFUNCTION, &BasicSession::_socket_callback);
-	curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETDATA, this);
+	CURLIO_MULTI_ASSERT(
+	  curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETFUNCTION, &BasicSession::_socket_callback));
+	CURLIO_MULTI_ASSERT(curl_multi_setopt(_multi_handle, CURLMOPT_SOCKETDATA, this));
 
-	curl_multi_setopt(_multi_handle, CURLMOPT_TIMERFUNCTION, &BasicSession::_timer_callback);
-	curl_multi_setopt(_multi_handle, CURLMOPT_TIMERDATA, this);
+	CURLIO_MULTI_ASSERT(
+	  curl_multi_setopt(_multi_handle, CURLMOPT_TIMERFUNCTION, &BasicSession::_timer_callback));
+	CURLIO_MULTI_ASSERT(curl_multi_setopt(_multi_handle, CURLMOPT_TIMERDATA, this));
 }
 
 template<typename Executor>
@@ -30,7 +32,7 @@ inline BasicSession<Executor>::~BasicSession()
 
 	// TODO remove all active easy handles
 
-	curl_multi_cleanup(_multi_handle);
+	CURLIO_MULTI_CHECK(curl_multi_cleanup(_multi_handle));
 }
 
 template<typename Executor>
@@ -60,19 +62,27 @@ inline auto BasicSession<Executor>::async_start(request_pointer request, auto&& 
 
 			    // Kick start.
 			    CURLIO_TRACE("Kick-starting handle @" << easy_handle);
-			    curl_multi_add_handle(_multi_handle, easy_handle);
+			    auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
+			    if (const auto err = CURLIO_MULTI_CHECK(curl_multi_add_handle(_multi_handle, easy_handle)); err) {
+				    CURLIO_ASIO_NS::post(std::move(executor),
+				                         std::bind(std::move(handler), err, std::shared_ptr<Response>{}));
+				    return;
+			    }
 			    CURLIO_ASIO_NS::post(*_strand, [this] { _perform(CURL_SOCKET_TIMEOUT, 0); });
 
 			    const std::shared_ptr<Response> response{ new Response{ _strand, request } };
-			    response->_start();
+			    if (const auto err = response->_start(); err) {
+				    CURLIO_ASIO_NS::post(std::move(executor),
+				                         std::bind(std::move(handler), err, std::shared_ptr<Response>{}));
+				    return;
+			    }
 			    auto unregister_response = detail::finally([&] {
 				    CURLIO_ERROR("Something prevented lift-off @" << easy_handle);
-				    response->_stop();
+				    static_cast<void>(response->_stop());
 				    _active_requests.erase(easy_handle);
 			    });
 			    _active_requests.insert({ easy_handle, response });
 
-			    auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
 			    CURLIO_ASIO_NS::post(std::move(executor),
 			                         std::bind(std::move(handler), detail::asio_error_code{}, response));
 
@@ -98,7 +108,7 @@ inline BasicSession<Executor>::strand_type& BasicSession<Executor>::get_strand()
 
 template<typename Executor>
 inline void BasicSession<Executor>::_monitor(const std::shared_ptr<detail::SocketData>& data,
-                                             detail::SocketData::WaitFlag type)
+                                             detail::SocketData::WaitFlag type) noexcept
 {
 	CURLIO_TRACE("Monitoring on socket #" << data->socket.native_handle() << " flags=" << data->wait_flags
 	                                      << " type=" << static_cast<int>(type));
@@ -119,19 +129,19 @@ inline void BasicSession<Executor>::_monitor(const std::shared_ptr<detail::Socke
 }
 
 template<typename Executor>
-inline void BasicSession<Executor>::_clean_finished()
+inline void BasicSession<Executor>::_clean_finished() noexcept
 {
 	const auto unregister = [&](typename decltype(_active_requests)::iterator it) {
 		CURLIO_ASSERT(it != _active_requests.end());
 
-		curl_multi_remove_handle(_multi_handle, it->first);
+		CURLIO_MULTI_CHECK(curl_multi_remove_handle(_multi_handle, it->first));
 
-		curl_easy_setopt(it->first, CURLOPT_OPENSOCKETFUNCTION, nullptr);
-		curl_easy_setopt(it->first, CURLOPT_OPENSOCKETDATA, nullptr);
-		curl_easy_setopt(it->first, CURLOPT_CLOSESOCKETFUNCTION, nullptr);
-		curl_easy_setopt(it->first, CURLOPT_CLOSESOCKETDATA, nullptr);
+		CURLIO_EASY_CHECK(curl_easy_setopt(it->first, CURLOPT_OPENSOCKETFUNCTION, nullptr));
+		CURLIO_EASY_CHECK(curl_easy_setopt(it->first, CURLOPT_OPENSOCKETDATA, nullptr));
+		CURLIO_EASY_CHECK(curl_easy_setopt(it->first, CURLOPT_CLOSESOCKETFUNCTION, nullptr));
+		CURLIO_EASY_CHECK(curl_easy_setopt(it->first, CURLOPT_CLOSESOCKETDATA, nullptr));
 
-		it->second->_stop();
+		static_cast<void>(it->second->_stop());
 		return _active_requests.erase(it);
 	};
 
@@ -165,13 +175,10 @@ inline void BasicSession<Executor>::_clean_finished()
 }
 
 template<typename Executor>
-inline void BasicSession<Executor>::_perform(curl_socket_t socket, int bitmask)
+inline void BasicSession<Executor>::_perform(curl_socket_t socket, int bitmask) noexcept
 {
 	int running = 0;
-	if (const auto code = curl_multi_socket_action(_multi_handle, socket, bitmask, &running);
-	    code != CURLM_OK) {
-		CURLIO_ERROR("Action failed on socket #" << socket << ": " << curl_multi_strerror(code));
-	}
+	CURLIO_MULTI_CHECK(curl_multi_socket_action(_multi_handle, socket, bitmask, &running));
 	CURLIO_TRACE("Action performed for socket #" << socket << " with bitmask " << bitmask
 	                                             << " and running handles " << running);
 	_clean_finished();

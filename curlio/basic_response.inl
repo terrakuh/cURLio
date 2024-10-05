@@ -2,8 +2,8 @@
 
 #include "basic_request.hpp"
 #include "basic_response.hpp"
+#include "debug.hpp"
 #include "error.hpp"
-#include "log.hpp"
 
 namespace curlio {
 
@@ -16,11 +16,7 @@ inline auto BasicResponse<Executor>::async_get_info(auto&& token) const
 	  [this](auto handler) {
 		  CURLIO_ASIO_NS::dispatch(*_strand, [this, handler = std::move(handler)]() mutable {
 			  detail::info_type<Option> value{};
-			  detail::asio_error_code ec{};
-
-			  // TODO
-			  curl_easy_getinfo(_request->native_handle(), Option, &value);
-
+			  auto ec       = CURLIO_EASY_CHECK(curl_easy_getinfo(_request->native_handle(), Option, &value));
 			  auto executor = CURLIO_ASIO_NS::get_associated_executor(handler, get_executor());
 			  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), ec, value));
 		  });
@@ -71,7 +67,11 @@ inline auto BasicResponse<Executor>::async_read_some(const auto& buffers, auto&&
 				  };
 
 				  // Resume.
-				  curl_easy_pause(_request->native_handle(), CURLPAUSE_CONT);
+				  if (const auto err = CURLIO_EASY_CHECK(curl_easy_pause(_request->native_handle(), CURLPAUSE_CONT));
+				      err) {
+					  _receive_handler(err, nullptr, 0);
+					  _receive_handler.reset();
+				  }
 			  }
 		  });
 	  },
@@ -110,21 +110,39 @@ inline BasicResponse<Executor>::BasicResponse(std::shared_ptr<CURLIO_ASIO_NS::st
 {}
 
 template<typename Executor>
-inline void BasicResponse<Executor>::_start() noexcept
+inline detail::asio_error_code BasicResponse<Executor>::_start() noexcept
 {
-	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEFUNCTION, &BasicResponse::_write_callback);
-	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEDATA, this);
-	_header_collector.start();
+	if (const auto err = CURLIO_EASY_CHECK(
+	      curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEFUNCTION, &BasicResponse::_write_callback));
+	    err) {
+		return err;
+	}
+	if (const auto err =
+	      CURLIO_EASY_CHECK(curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEDATA, this));
+	    err) {
+		return err;
+	}
+	return _header_collector.start();
 }
 
 template<typename Executor>
-inline void BasicResponse<Executor>::_stop() noexcept
+inline detail::asio_error_code BasicResponse<Executor>::_stop() noexcept
 {
 	CURLIO_INFO("Response marked as finished");
 
-	_header_collector.stop();
-	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEFUNCTION, nullptr);
-	curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEDATA, nullptr);
+	if (const auto err = _header_collector.stop(); err) {
+		return err;
+	}
+	if (const auto err =
+	      CURLIO_EASY_CHECK(curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEFUNCTION, nullptr));
+	    err) {
+		return err;
+	}
+	if (const auto err =
+	      CURLIO_EASY_CHECK(curl_easy_setopt(_request->native_handle(), CURLOPT_WRITEDATA, nullptr));
+	    err) {
+		return err;
+	}
 
 	_finished = true;
 	if (_receive_handler) {
@@ -133,6 +151,7 @@ inline void BasicResponse<Executor>::_stop() noexcept
 	}
 
 	_request->_mark_finished();
+	return {};
 }
 
 template<typename Executor>

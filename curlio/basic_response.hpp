@@ -45,8 +45,8 @@ private:
 
 	BasicResponse(std::shared_ptr<strand_type> strand,
 	              std::shared_ptr<BasicRequest<Executor>> request) noexcept;
-	void _start() noexcept;
-	void _stop() noexcept;
+	[[nodiscard]] detail::asio_error_code _start() noexcept;
+	[[nodiscard]] detail::asio_error_code _stop() noexcept;
 	static std::size_t _write_callback(char* data, std::size_t size, std::size_t count,
 	                                   void* self_ptr) noexcept;
 };

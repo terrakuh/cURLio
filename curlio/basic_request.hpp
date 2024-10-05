@@ -16,15 +16,15 @@ public:
 	using executor_type = Executor;
 	using strand_type   = CURLIO_ASIO_NS::strand<executor_type>;
 
-	BasicRequest(BasicSession<Executor>& session) noexcept;
-	BasicRequest(const BasicRequest& copy) noexcept;
+	BasicRequest(BasicSession<Executor>& session);
+	BasicRequest(const BasicRequest& copy);
 	BasicRequest(BasicRequest&& move) = delete;
 	~BasicRequest();
 
 	template<CURLoption Option>
 	void set_option(detail::option_type<Option> value);
 	void append_header(const char* header);
-	void free_headers();
+	void free_headers() noexcept;
 	auto async_write_some(const auto& buffers, auto&& token);
 	auto async_abort(auto&& token);
 	CURLIO_NO_DISCARD CURL* native_handle() const noexcept;

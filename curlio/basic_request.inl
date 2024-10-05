@@ -2,28 +2,27 @@
 
 #include "basic_request.hpp"
 #include "basic_session.hpp"
+#include "debug.hpp"
 #include "error.hpp"
-#include "log.hpp"
 
 namespace curlio {
 
 template<typename Executor>
-inline BasicRequest<Executor>::BasicRequest(BasicSession<Executor>& session) noexcept
-    : _strand{ session._strand }
+inline BasicRequest<Executor>::BasicRequest(BasicSession<Executor>& session) : _strand{ session._strand }
 {
 	_handle = curl_easy_init();
 
-	curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &BasicRequest::_read_callback);
-	curl_easy_setopt(_handle, CURLOPT_READDATA, this);
+	CURLIO_EASY_ASSERT(curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &BasicRequest::_read_callback));
+	CURLIO_EASY_ASSERT(curl_easy_setopt(_handle, CURLOPT_READDATA, this));
 }
 
 template<typename Executor>
-inline BasicRequest<Executor>::BasicRequest(const BasicRequest& copy) noexcept : _strand{ copy._strand }
+inline BasicRequest<Executor>::BasicRequest(const BasicRequest& copy) : _strand{ copy._strand }
 {
 	_handle = curl_easy_duphandle(copy._handle);
 
-	curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &BasicRequest::_read_callback);
-	curl_easy_setopt(_handle, CURLOPT_READDATA, this);
+	CURLIO_EASY_ASSERT(curl_easy_setopt(_handle, CURLOPT_READFUNCTION, &BasicRequest::_read_callback));
+	CURLIO_EASY_ASSERT(curl_easy_setopt(_handle, CURLOPT_READDATA, this));
 }
 
 template<typename Executor>
@@ -38,9 +37,7 @@ template<typename Executor>
 template<CURLoption Option>
 inline void BasicRequest<Executor>::set_option(detail::option_type<Option> value)
 {
-	if (const auto status = curl_easy_setopt(_handle, Option, value); status != CURLE_OK) {
-		throw std::system_error{ Code::bad_option, curl_easy_strerror(status) };
-	}
+	CURLIO_EASY_ASSERT(curl_easy_setopt(_handle, Option, value));
 }
 
 template<typename Executor>
@@ -51,7 +48,7 @@ inline void BasicRequest<Executor>::append_header(const char* header)
 }
 
 template<typename Executor>
-inline void BasicRequest<Executor>::free_headers()
+inline void BasicRequest<Executor>::free_headers() noexcept
 {
 	curl_slist_free_all(_additional_headers);
 	_additional_headers = nullptr;
@@ -89,7 +86,10 @@ inline auto BasicRequest<Executor>::async_write_some(const auto& buffers, auto&&
 				  };
 
 				  // Resume.
-				  curl_easy_pause(_handle, CURLPAUSE_CONT);
+				  if (const auto err = CURLIO_EASY_CHECK(curl_easy_pause(_handle, CURLPAUSE_CONT)); err) {
+					  _send_handler(err, nullptr, 0);
+					  _send_handler.reset();
+				  }
 			  }
 		  });
 	  },
@@ -125,7 +125,10 @@ inline auto BasicRequest<Executor>::async_abort(auto&& token)
 			  };
 
 			  // Resume.
-			  curl_easy_pause(_handle, CURLPAUSE_CONT);
+			  if (const auto err = CURLIO_EASY_CHECK(curl_easy_pause(_handle, CURLPAUSE_CONT)); err) {
+				  _send_handler(err, nullptr, 0);
+				  _send_handler.reset();
+			  }
 		  });
 	  },
 	  token);

@@ -7,7 +7,7 @@
 
 #include "../basic_response.hpp"
 #include "../error.hpp"
-#include "../log.hpp"
+#include "../debug.hpp"
 
 #include <string>
 

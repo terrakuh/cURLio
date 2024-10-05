@@ -40,9 +40,9 @@ private:
 	std::map<curl_socket_t, std::shared_ptr<detail::SocketData>> _sockets;
 	CURLIO_ASIO_NS::steady_timer _timer{ *_strand };
 
-	void _monitor(const std::shared_ptr<detail::SocketData>& data, detail::SocketData::WaitFlag type);
-	void _clean_finished();
-	void _perform(curl_socket_t socket, int bitmask);
+	void _monitor(const std::shared_ptr<detail::SocketData>& data, detail::SocketData::WaitFlag type) noexcept;
+	void _clean_finished() noexcept;
+	void _perform(curl_socket_t socket, int bitmask) noexcept;
 	static int _socket_callback(CURL* easy_handle, curl_socket_t socket, int what, void* self_ptr,
 	                            void* socket_data_ptr) noexcept;
 	static int _timer_callback(CURLM* multi_handle, long timeout_ms, void* self_ptr) noexcept;
