@@ -41,6 +41,9 @@ inline auto BasicSession<Executor>::async_start(request_pointer request, auto&& 
 	  [this, request = std::move(request)](auto handler) mutable {
 		  CURLIO_ASIO_NS::dispatch(
 		    *_strand, [this, request = std::move(request), handler = std::move(handler)]() mutable {
+			    // If the handle was already registered but the start was too fast, we need to clean it first.
+			    _perform(CURL_SOCKET_TIMEOUT, 0);
+
 			    const auto easy_handle = request->native_handle();
 
 			    // TODO error
