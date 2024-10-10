@@ -91,13 +91,13 @@ inline auto BasicResponse<Executor>::async_wait_headers(auto&& token)
 }
 
 template<typename Executor>
-inline BasicResponse<Executor>::executor_type BasicResponse<Executor>::get_executor() const noexcept
+inline typename BasicResponse<Executor>::executor_type BasicResponse<Executor>::get_executor() const noexcept
 {
 	return _strand->get_inner_executor();
 }
 
 template<typename Executor>
-inline BasicResponse<Executor>::strand_type& BasicResponse<Executor>::get_strand() noexcept
+inline typename BasicResponse<Executor>::strand_type& BasicResponse<Executor>::get_strand() noexcept
 {
 	return *_strand;
 }
@@ -186,7 +186,7 @@ inline std::size_t BasicResponse<Executor>::_write_callback(char* data, std::siz
 template<typename Executor>
 inline auto async_wait_last_headers(std::shared_ptr<BasicResponse<Executor>> response, auto&& token)
 {
-	using headers_type = BasicResponse<Executor>::headers_type;
+	using headers_type = typename BasicResponse<Executor>::headers_type;
 	return CURLIO_ASIO_NS::async_compose<decltype(token), void(detail::asio_error_code, headers_type)>(
 	  [response = std::move(response), started = false](auto& self, detail::asio_error_code ec = {},
 	                                                    headers_type headers = {}) mutable {

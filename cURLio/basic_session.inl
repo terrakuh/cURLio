@@ -95,13 +95,13 @@ inline auto BasicSession<Executor>::async_start(request_pointer request, auto&& 
 }
 
 template<typename Executor>
-inline BasicSession<Executor>::executor_type BasicSession<Executor>::get_executor() const noexcept
+inline typename BasicSession<Executor>::executor_type BasicSession<Executor>::get_executor() const noexcept
 {
 	return _strand->get_inner_executor();
 }
 
 template<typename Executor>
-inline BasicSession<Executor>::strand_type& BasicSession<Executor>::get_strand() noexcept
+inline typename BasicSession<Executor>::strand_type& BasicSession<Executor>::get_strand() noexcept
 {
 	return *_strand;
 }

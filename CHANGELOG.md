@@ -6,6 +6,9 @@
 - Per-operation cancellation support
 - More error messages and propagation
 
+### Changed
+- Namespace from `curlio` to `cURLio`
+
 ### Fixed
 - Re-registering of fast handles
 

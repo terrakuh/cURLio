@@ -141,13 +141,13 @@ inline CURL* BasicRequest<Executor>::native_handle() const noexcept
 }
 
 template<typename Executor>
-inline BasicRequest<Executor>::executor_type BasicRequest<Executor>::get_executor() const noexcept
+inline typename BasicRequest<Executor>::executor_type BasicRequest<Executor>::get_executor() const noexcept
 {
 	return _strand->get_inner_executor();
 }
 
 template<typename Executor>
-inline BasicRequest<Executor>::strand_type& BasicRequest<Executor>::get_strand() noexcept
+inline typename BasicRequest<Executor>::strand_type& BasicRequest<Executor>::get_strand() noexcept
 {
 	return *_strand;
 }

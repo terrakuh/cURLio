@@ -28,7 +28,7 @@ constexpr std::string_view trim(std::string_view str, const std::locale& locale 
 			break;
 		}
 	}
-	return { begin, end };
+	return { begin, static_cast<std::size_t>(end - begin) };
 }
 
 /// Hooks into the header callbacks of cURL and parses the header fields. Hook management must be done
