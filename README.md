@@ -2,19 +2,23 @@
 
 The simple C++ 17 glue between [ASIO](https://think-async.com/Asio/) and [cURL](https://curl.se/). The library is fully templated and header-only. It follows the basic principles of the ASIO design and defines `async_` functions that can take different completion handlers.
 
-On the cURL side the [multi_socket](https://everything.curl.dev/libcurl/drive/multi-socket) approach is implemented with the `curlio::Session` class which can handle thousands of requests in parallel. The current implementation of a session is synchronized via ASIO's strand mechanism in order to avoid concurrent access to the cURL handles in the background.
+On the cURL side the [multi_socket](https://everything.curl.dev/libcurl/drive/multi-socket) approach is implemented with the `cURLio::Session` class which can handle thousands of requests in parallel. The current implementation of a session is synchronized via ASIO's strand mechanism in order to avoid concurrent access to the cURL handles in the background.
+
+This library is only brings cURLio into the world of ASIO and is **not** meant to be easy-to-use wrapper for cURL. There are other libraries for that.
 
 ## Example
 
 The following examples uses the [coroutines](https://en.cppreference.com/w/cpp/language/coroutines) which were introduced in C++ 20:
 
 ```cpp
+#include <cURLio.hpp>
+
 asio::io_service service{};
 
-curlio::Session session{ service.get_executor() };
+cURLio::Session session{ service.get_executor() };
 
 // Create request and set options.
-auto request = std::make_shared<curlio::Request>(session);
+auto request = std::make_shared<cURLio::Request>(session);
 request->set_option<CURLOPT_URL>("http://example.com");
 request->set_option<CURLOPT_USERAGENT>("cURLio");
 
@@ -39,20 +43,20 @@ while (true) {
 
 ## Configuration
 
-Define the macro `CURLIO_USE_STANDALONE_ASIO` before the first inclusion of `<curlio/curlio.hpp>` to switch from Boost.ASIO to the standalone ASIO library.
+The library provides two CMake targets `cURLio::cURLio-asio` and `cURLio::cURLio-boost-asio` that link to the standalone ASIO and the Boost.ASIO library respectively. The target `cURLio::cURLio` is an alias depending on the value of `CURLIO_USE_STANDALONE_ASIO` (default `OFF`).
 
 ## Installation
 
 ```sh
-git clone https://github.com/terrakuh/curlio.git
-cmake -S curlio -B curlio/build
-cmake --install curlio/build
+git clone https://github.com/terrakuh/cURLio.git
+cmake -S cURLio -B cURLio/build
+cmake --install cURLio/build
 ```
 
 And then in your `CMakeLists.txt`:
 
 ```cmake
-find_package(cURLio 0.5 REQUIRED)
+find_package(cURLio 0.6 REQUIRED)
 target_link_libraries(my-target PRIVATE cURLio::cURLio)
 ```
 

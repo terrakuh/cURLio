@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../debug.hpp"
 #include "../error.hpp"
-#include "../log.hpp"
 #include "asio_include.hpp"
 #include "case_insensitive_less.hpp"
 #include "function.hpp"
@@ -12,7 +12,7 @@
 #include <string>
 #include <string_view>
 
-namespace curlio::detail {
+namespace cURLio::detail {
 
 constexpr std::string_view trim(std::string_view str, const std::locale& locale = {})
 {
@@ -28,7 +28,7 @@ constexpr std::string_view trim(std::string_view str, const std::locale& locale 
 			break;
 		}
 	}
-	return { begin, end };
+	return { begin, static_cast<std::size_t>(end - begin) };
 }
 
 /// Hooks into the header callbacks of cURL and parses the header fields. Hook management must be done
@@ -42,19 +42,30 @@ public:
 	HeaderCollector(HeaderCollector&& move)      = delete;
 	~HeaderCollector()                           = default;
 
-	void start() noexcept
+	[[nodiscard]] asio_error_code start() noexcept
 	{
-		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, &HeaderCollector::_header_callback);
-		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, this);
+		if (const auto err = CURLIO_EASY_CHECK(
+		      curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, &HeaderCollector::_header_callback));
+		    err) {
+			return err;
+		}
+		return CURLIO_EASY_CHECK(curl_easy_setopt(_handle, CURLOPT_HEADERDATA, this));
 	}
-	void stop() noexcept
+	[[nodiscard]] asio_error_code stop() noexcept
 	{
-		curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, nullptr);
-		curl_easy_setopt(_handle, CURLOPT_HEADERDATA, nullptr);
+		if (const auto err = CURLIO_EASY_CHECK(curl_easy_setopt(_handle, CURLOPT_HEADERFUNCTION, nullptr)); err) {
+			return err;
+		}
+		if (const auto err = CURLIO_EASY_CHECK(curl_easy_setopt(_handle, CURLOPT_HEADERDATA, nullptr)); err) {
+			return err;
+		}
+
+		_finished = true;
 		if (_headers_received_handler) {
 			_headers_received_handler(CURLIO_ASIO_NS::error::eof);
 			_headers_received_handler.reset();
 		}
+		return {};
 	}
 	auto async_wait(auto&& fallback_executor, auto&& token)
 	{
@@ -64,7 +75,11 @@ public:
 			    handler, std::forward<decltype(fallback_executor)>(fallback_executor));
 
 			  // Already received.
-			  if (_ready_to_await) {
+			  if (_finished) {
+				  CURLIO_ASIO_NS::post(
+				    std::move(executor),
+				    std::bind(std::move(handler), asio_error_code{ CURLIO_ASIO_NS::error::eof }, std::move(_fields)));
+			  } else if (_ready_to_await) {
 				  _ready_to_await = false;
 				  CURLIO_ASIO_NS::post(std::move(executor),
 				                       std::bind(std::move(handler), asio_error_code{}, std::move(_fields)));
@@ -75,9 +90,20 @@ public:
 				                                 fields_type{}));
 			  } // Need to wait.
 			  else {
+#if CURLIO_ASIO_HAS_CANCEL
+				  if (auto slot = boost::asio::get_associated_cancellation_slot(handler); slot.is_connected()) {
+					  slot.assign([this](boost::asio::cancellation_type /* type */) {
+						  _headers_received_handler(boost::asio::error::operation_aborted);
+						  _headers_received_handler.reset();
+					  });
+				  }
+#endif
+
 				  _headers_received_handler = [this, executor = std::move(executor),
 				                               handler = std::move(handler)](asio_error_code ec) mutable {
-					  _ready_to_await = false;
+					  if (!ec) {
+						  _ready_to_await = false;
+					  }
 					  CURLIO_ASIO_NS::post(std::move(executor), std::bind(std::move(handler), ec, std::move(_fields)));
 				  };
 			  }
@@ -91,9 +117,10 @@ public:
 private:
 	fields_type _fields;
 	CURL* _handle;
-	std::uint8_t _last_clear       = 0;
-	std::uint8_t _headers_received = 0;
-	bool _ready_to_await           = false;
+	std::uint32_t _last_clear       = 0;
+	std::uint32_t _headers_received = 0;
+	bool _ready_to_await            = false;
+	bool _finished                  = false;
 	Function<void(asio_error_code)> _headers_received_handler;
 
 	static std::size_t _header_callback(char* buffer, std::size_t size, std::size_t count,
@@ -109,7 +136,8 @@ private:
 		if (self->_last_clear < self->_headers_received) {
 			CURLIO_TRACE("Cleaning headers because of new segment");
 			self->_fields.clear();
-			self->_last_clear++;
+			self->_last_clear     = self->_headers_received;
+			self->_ready_to_await = false;
 		}
 
 		// Add header to map.
@@ -136,4 +164,4 @@ private:
 	}
 };
 
-} // namespace curlio::detail
+} // namespace cURLio::detail

@@ -1,4 +1,7 @@
-FROM archlinux
+FROM fedora:40 AS dev
 
-RUN pacman -Syq --noconfirm python-pip clang git git-lfs openssh cmake ninja gcc gdb nodejs yarn
-RUN pip install cmakelang
+RUN dnf -y update && \
+    dnf -y install git git-lfs cmake ninja-build gcc clang clang-tools-extra llvm gdb python3-pip doxygen && \
+    dnf -y install liburing-devel libcurl-devel zip nodejs && \
+    pip install cmakelang && \
+    dnf clean all

@@ -2,7 +2,7 @@
 
 #include "asio_include.hpp"
 
-namespace curlio::detail {
+namespace cURLio::detail {
 
 struct SocketData {
 	enum WaitFlag {
@@ -14,4 +14,4 @@ struct SocketData {
 	int wait_flags = 0;
 };
 
-} // namespace curlio::detail
+} // namespace cURLio::detail

@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace curlio::detail {
+namespace cURLio::detail {
 
 template<int Test, int... Values>
 struct Contains : std::false_type {};
@@ -16,4 +16,4 @@ struct Contains<Test, Other, Rest...> : Contains<Test, Rest...> {};
 template<int Test, int... Values>
 constexpr bool contains = Contains<Test, Values...>::value;
 
-} // namespace curlio::detail
+} // namespace cURLio::detail

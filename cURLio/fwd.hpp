@@ -1,6 +1,6 @@
 #pragma once
 
-namespace curlio
+namespace cURLio
 {
 
 template<typename Executor>

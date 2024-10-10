@@ -5,10 +5,11 @@
  */
 #pragma once
 
+#include <curl/curl.h>
 #include <system_error>
 #include <type_traits>
 
-namespace curlio {
+namespace cURLio {
 
 enum class Code {
 	success,
@@ -21,12 +22,18 @@ enum class Code {
 	request_not_active,
 	bad_url,
 	no_response_code,
-	bad_option,
+
+	/// From 1000 - 2000 reserved for CURL easy errors.
+	curl_easy_reserved = 1000,
+	/// From 2000 - 3000 reserved for CURL easy errors.
+	curl_multi_reserved = 2000,
 };
 
 enum class Condition {
 	success,
 	usage,
+	curl_easy,
+	curl_multi,
 };
 
 std::error_condition make_error_condition(Condition condition) noexcept;
@@ -35,18 +42,29 @@ inline const std::error_category& code_category() noexcept
 {
 	static class : public std::error_category {
 	public:
-		const char* name() const noexcept override { return "curlio"; }
+		const char* name() const noexcept override { return "cURLio"; }
 		std::error_condition default_error_condition(int code) const noexcept override
 		{
 			if (code == 0) {
 				return make_error_condition(Condition::success);
 			} else if (code >= 1 && code < 50) {
 				return make_error_condition(Condition::usage);
+			} else if (code >= 1000 && code < 2000) {
+				return make_error_condition(Condition::curl_easy);
+			} else if (code >= 2000 && code < 3000) {
+				return make_error_condition(Condition::curl_multi);
 			}
 			return error_category::default_error_condition(code);
 		}
 		std::string message(int ec) const override
 		{
+			// Special handling for CURL errors.
+			if (ec >= 1000 && ec < 2000) {
+				return curl_easy_strerror(static_cast<CURLcode>(ec - 1000));
+			} else if (ec >= 2000 && ec < 3000) {
+				return curl_multi_strerror(static_cast<CURLMcode>(ec - 2000 - 1));
+			}
+
 			switch (static_cast<Code>(ec)) {
 			case Code::success: return "success";
 
@@ -58,7 +76,6 @@ inline const std::error_category& code_category() noexcept
 			case Code::request_not_active: return "request is not active";
 			case Code::bad_url: return "bad URL";
 			case Code::no_response_code: return "no response code available";
-			case Code::bad_option: return "bad option";
 
 			default: return "(unrecognized error code)";
 			}
@@ -71,12 +88,13 @@ inline const std::error_category& condition_category() noexcept
 {
 	static class : public std::error_category {
 	public:
-		const char* name() const noexcept override { return "curlio"; }
+		const char* name() const noexcept override { return "cURLio"; }
 		std::string message(int condition) const override
 		{
 			switch (static_cast<Condition>(condition)) {
 			case Condition::success: return "success";
 			case Condition::usage: return "usage";
+			case Condition::curl_easy: return "CURL easy";
 			default: return "(unrecognized error condition)";
 			}
 		}
@@ -94,14 +112,14 @@ inline std::error_condition make_error_condition(Condition condition) noexcept
 	return { static_cast<int>(condition), condition_category() };
 }
 
-} // namespace curlio
+} // namespace cURLio
 
 namespace std {
 
 template<>
-struct is_error_code_enum<curlio::Code> : std::true_type {};
+struct is_error_code_enum<cURLio::Code> : std::true_type {};
 
 template<>
-struct is_error_condition_enum<curlio::Condition> : std::true_type {};
+struct is_error_condition_enum<cURLio::Condition> : std::true_type {};
 
 } // namespace std

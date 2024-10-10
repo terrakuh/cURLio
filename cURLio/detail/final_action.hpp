@@ -3,7 +3,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace curlio::detail {
+namespace cURLio::detail {
 
 template<typename Action>
 class [[nodiscard]] FinalAction {
@@ -38,4 +38,4 @@ private:
 	return FinalAction<std::decay_t<decltype(action)>>{ std::forward<decltype(action)>(action) };
 }
 
-} // namespace curlio::detail
+} // namespace cURLio::detail

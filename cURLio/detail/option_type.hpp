@@ -5,7 +5,7 @@
 #include <curl/curl.h>
 #include <type_traits>
 
-namespace curlio::detail {
+namespace cURLio::detail {
 
 template<CURLINFO Option, typename = void>
 struct Info_type;
@@ -231,4 +231,4 @@ struct Option_type<Option,
 template<CURLoption Option>
 using option_type = typename Option_type<Option>::type;
 
-} // namespace curlio::detail
+} // namespace cURLio::detail

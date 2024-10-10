@@ -8,7 +8,7 @@
 
 #include <curl/curl.h>
 
-namespace curlio {
+namespace cURLio {
 
 template<typename Executor>
 class BasicRequest {
@@ -16,15 +16,19 @@ public:
 	using executor_type = Executor;
 	using strand_type   = CURLIO_ASIO_NS::strand<executor_type>;
 
-	BasicRequest(BasicSession<Executor>& session) noexcept;
-	BasicRequest(const BasicRequest& copy) noexcept;
+	BasicRequest(BasicSession<Executor>& session);
+	BasicRequest(const BasicRequest& copy);
 	BasicRequest(BasicRequest&& move) = delete;
 	~BasicRequest();
 
+	/// Sets cURL option and checks the result.
 	template<CURLoption Option>
 	void set_option(detail::option_type<Option> value);
+	/// Appends the given header value (e.g. `"User-Agent: me"`) to cURL header list.
 	void append_header(const char* header);
-	void free_headers();
+	/// Frees all headers.
+	void free_headers() noexcept;
+	/// Sends some of the given buffer (ASIO `ConstBufferSequence`) to the remote.
 	auto async_write_some(const auto& buffers, auto&& token);
 	auto async_abort(auto&& token);
 	CURLIO_NO_DISCARD CURL* native_handle() const noexcept;
@@ -34,8 +38,6 @@ public:
 	BasicRequest& operator=(const BasicRequest& copy) = delete;
 	BasicRequest& operator=(BasicRequest&& move)      = delete;
 
-	static std::shared_ptr<BasicRequest> make_request(BasicSession<Executor>& session);
-
 private:
 	friend class BasicSession<Executor>;
 	friend class BasicResponse<Executor>;
@@ -44,6 +46,7 @@ private:
 	// The CURL easy handle. The response owns this instance.
 	CURL* _handle;
 	curl_slist* _additional_headers = nullptr;
+	/// An optional handler waiting to send more data.
 	detail::Function<std::size_t(detail::asio_error_code, char*, std::size_t)> _send_handler{};
 
 	BasicRequest(std::shared_ptr<BasicSession<Executor>>&& session);
@@ -53,4 +56,4 @@ private:
 
 using Request = BasicRequest<CURLIO_ASIO_NS::any_io_executor>;
 
-} // namespace curlio
+} // namespace cURLio
