@@ -1,9 +1,13 @@
 # Change Log
 
-<h2><a href="https://github.com/terrakuh/curlio/compare/v0.5.0..dev">v0.5.0</a> - 2024-08-04</h2>
+<h2><a href="https://github.com/terrakuh/curlio/compare/v0.5.0..v0.6.0">v0.6.0</a> - 2024-10-10</h2>
 
 ### Added
 - Per-operation cancellation support
+- More error messages and propagation
+
+### Fixed
+- Re-registering of fast handles
 
 <h2><a href="https://github.com/terrakuh/curlio/compare/v0.4..v0.5.0">v0.5.0</a> - 2024-08-04</h2>
 

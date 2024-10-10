@@ -1,0 +1,20 @@
+set(@PROJECT_NAME@_VERSION @PROJECT_VERSION@)
+
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(CURL 7.21 REQUIRED)
+find_dependency(Threads REQUIRED)
+
+if(NOT DEFINED CURLIO_USE_STANDALONE_ASIO)
+  set(CURLIO_USE_STANDALONE_ASIO @CURLIO_USE_STANDALONE_ASIO@)
+endif()
+
+if(NOT CURLIO_USE_STANDALONE_ASIO)
+  find_dependency(Boost 1.78 REQUIRED)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-targets.cmake")
+set(@PROJECT_NAME@_FOUND TRUE)
+
+check_required_components(@PROJECT_NAME@)
