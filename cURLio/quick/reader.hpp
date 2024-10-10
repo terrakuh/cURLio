@@ -11,7 +11,7 @@
 
 #include <string>
 
-namespace curlio::quick {
+namespace cURLio::quick {
 
 template<typename Executor>
 inline auto async_read_all(std::shared_ptr<BasicResponse<Executor>> response, auto&& token,
@@ -47,4 +47,4 @@ inline auto async_read_all(std::shared_ptr<BasicResponse<Executor>> response, au
 	  token, std::move(executor));
 }
 
-} // namespace curlio::quick
+} // namespace cURLio::quick

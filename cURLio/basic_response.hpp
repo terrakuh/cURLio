@@ -9,7 +9,7 @@
 #include <curl/curl.h>
 #include <memory>
 
-namespace curlio {
+namespace cURLio {
 
 using Headers = detail::HeaderCollector::fields_type;
 
@@ -56,4 +56,4 @@ auto async_wait_last_headers(std::shared_ptr<BasicResponse<Executor>> response, 
 
 using Response = BasicResponse<CURLIO_ASIO_NS::any_io_executor>;
 
-} // namespace curlio
+} // namespace cURLio

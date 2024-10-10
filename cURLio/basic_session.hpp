@@ -9,7 +9,7 @@
 #include <map>
 #include <memory>
 
-namespace curlio {
+namespace cURLio {
 
 template<typename Executor>
 class BasicSession {
@@ -53,4 +53,4 @@ private:
 
 using Session = BasicSession<CURLIO_ASIO_NS::any_io_executor>;
 
-} // namespace curlio
+} // namespace cURLio

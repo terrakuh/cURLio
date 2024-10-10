@@ -8,7 +8,7 @@
 
 #include <curl/curl.h>
 
-namespace curlio {
+namespace cURLio {
 
 template<typename Executor>
 class BasicRequest {
@@ -51,4 +51,4 @@ private:
 
 using Request = BasicRequest<CURLIO_ASIO_NS::any_io_executor>;
 
-} // namespace curlio
+} // namespace cURLio

@@ -31,33 +31,33 @@
 #define CURLIO_MULTI_ASSERT(expr)                                                                            \
 	if (const auto err = expr; err != CURLM_OK) {                                                              \
 		CURLIO_ERROR("Function " #expr " failed: " << curl_multi_strerror(err));                                 \
-		throw std::system_error{ static_cast<::curlio::Code>(                                                    \
-			static_cast<int>(::curlio::Code::curl_multi_reserved) + static_cast<int>(err) + 1) };                  \
+		throw std::system_error{ static_cast<::cURLio::Code>(                                                    \
+			static_cast<int>(::cURLio::Code::curl_multi_reserved) + static_cast<int>(err) + 1) };                  \
 	}
 #define CURLIO_MULTI_CHECK(expr)                                                                             \
 	[&] {                                                                                                      \
 		const auto err = expr;                                                                                   \
 		if (err != CURLM_OK) {                                                                                   \
 			CURLIO_ERROR("Function " #expr " failed: " << curl_multi_strerror(err));                               \
-			return ::curlio::detail::asio_error_code{ static_cast<::curlio::Code>(                                 \
-				static_cast<int>(::curlio::Code::curl_multi_reserved) + static_cast<int>(err) + 1) };                \
+			return ::cURLio::detail::asio_error_code{ static_cast<::cURLio::Code>(                                 \
+				static_cast<int>(::cURLio::Code::curl_multi_reserved) + static_cast<int>(err) + 1) };                \
 		}                                                                                                        \
-		return ::curlio::detail::asio_error_code{};                                                              \
+		return ::cURLio::detail::asio_error_code{};                                                              \
 	}()
 
 #define CURLIO_EASY_ASSERT(expr)                                                                             \
 	if (const auto err = expr; err != CURLE_OK) {                                                              \
 		CURLIO_ERROR("Function " #expr " failed: " << curl_easy_strerror(err));                                  \
-		throw std::system_error{ static_cast<::curlio::Code>(                                                    \
-			static_cast<int>(::curlio::Code::curl_easy_reserved) + static_cast<int>(err)) };                       \
+		throw std::system_error{ static_cast<::cURLio::Code>(                                                    \
+			static_cast<int>(::cURLio::Code::curl_easy_reserved) + static_cast<int>(err)) };                       \
 	}
 #define CURLIO_EASY_CHECK(expr)                                                                              \
 	[&] {                                                                                                      \
 		const auto err = expr;                                                                                   \
 		if (err != CURLE_OK) {                                                                                   \
 			CURLIO_ERROR("Function " #expr " failed: " << curl_easy_strerror(err));                                \
-			return ::curlio::detail::asio_error_code{ static_cast<::curlio::Code>(                                 \
-				static_cast<int>(::curlio::Code::curl_easy_reserved) + static_cast<int>(err)) };                     \
+			return ::cURLio::detail::asio_error_code{ static_cast<::cURLio::Code>(                                 \
+				static_cast<int>(::cURLio::Code::curl_easy_reserved) + static_cast<int>(err)) };                     \
 		}                                                                                                        \
-		return ::curlio::detail::asio_error_code{};                                                              \
+		return ::cURLio::detail::asio_error_code{};                                                              \
 	}()

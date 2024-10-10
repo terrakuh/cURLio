@@ -5,7 +5,7 @@
 #include "debug.hpp"
 #include "error.hpp"
 
-namespace curlio {
+namespace cURLio {
 
 template<typename Executor>
 template<CURLINFO Option>
@@ -200,4 +200,4 @@ inline auto async_wait_last_headers(std::shared_ptr<BasicResponse<Executor>> res
 	  token);
 }
 
-} // namespace curlio
+} // namespace cURLio

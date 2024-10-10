@@ -9,7 +9,7 @@
 
 #include <array>
 
-namespace curlio::quick {
+namespace cURLio::quick {
 
 inline auto async_ignore_all(auto& stream, auto&& token)
 {
@@ -26,4 +26,4 @@ inline auto async_ignore_all(auto& stream, auto&& token)
 	  token, stream);
 }
 
-} // namespace curlio::quick
+} // namespace cURLio::quick

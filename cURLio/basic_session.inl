@@ -8,7 +8,7 @@
 #include <functional>
 #include <optional>
 
-namespace curlio {
+namespace cURLio {
 
 template<typename Executor>
 inline BasicSession<Executor>::BasicSession(Executor executor)
@@ -298,4 +298,4 @@ inline int BasicSession<Executor>::_close_socket_callback(void* self_ptr, curl_s
 	return CURLE_OK;
 }
 
-} // namespace curlio
+} // namespace cURLio

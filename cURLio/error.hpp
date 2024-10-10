@@ -9,7 +9,7 @@
 #include <system_error>
 #include <type_traits>
 
-namespace curlio {
+namespace cURLio {
 
 enum class Code {
 	success,
@@ -42,7 +42,7 @@ inline const std::error_category& code_category() noexcept
 {
 	static class : public std::error_category {
 	public:
-		const char* name() const noexcept override { return "curlio"; }
+		const char* name() const noexcept override { return "cURLio"; }
 		std::error_condition default_error_condition(int code) const noexcept override
 		{
 			if (code == 0) {
@@ -88,7 +88,7 @@ inline const std::error_category& condition_category() noexcept
 {
 	static class : public std::error_category {
 	public:
-		const char* name() const noexcept override { return "curlio"; }
+		const char* name() const noexcept override { return "cURLio"; }
 		std::string message(int condition) const override
 		{
 			switch (static_cast<Condition>(condition)) {
@@ -112,14 +112,14 @@ inline std::error_condition make_error_condition(Condition condition) noexcept
 	return { static_cast<int>(condition), condition_category() };
 }
 
-} // namespace curlio
+} // namespace cURLio
 
 namespace std {
 
 template<>
-struct is_error_code_enum<curlio::Code> : std::true_type {};
+struct is_error_code_enum<cURLio::Code> : std::true_type {};
 
 template<>
-struct is_error_condition_enum<curlio::Condition> : std::true_type {};
+struct is_error_condition_enum<cURLio::Condition> : std::true_type {};
 
 } // namespace std

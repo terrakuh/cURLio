@@ -12,7 +12,7 @@
 #include <map>
 #include <sstream>
 
-namespace curlio::quick {
+namespace cURLio::quick {
 
 /// Constructs a query parameter list from the given associative container (like `std::map`).
 template<typename Associative_container = std::map<std::string, std::string>>
@@ -37,4 +37,4 @@ inline std::string construct_form(CURL* handle, const Associative_container& par
 	return ss.str();
 }
 
-} // namespace curlio::quick
+} // namespace cURLio::quick

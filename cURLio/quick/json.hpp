@@ -14,7 +14,7 @@
 #include <boost/json.hpp>
 #include <memory>
 
-namespace curlio::quick {
+namespace cURLio::quick {
 
 /**
  * Writes the given JSON value to the request object. No headers are modified nor is a size specified. The
@@ -81,4 +81,4 @@ inline auto async_read_json(Response& response, Token&& token)
 	  token, response);
 }
 
-} // namespace curlio::quick
+} // namespace cURLio::quick

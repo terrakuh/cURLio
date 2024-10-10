@@ -1,12 +1,12 @@
 // #define CURLIO_ENABLE_LOGGING
 // #define BOOST_ASIO_ENABLE_HANDLER_TRACKING
 
-#include <curlio/curlio.hpp>
+#include <cURLio.hpp>
 #include <iostream>
 
 using namespace boost::asio;
 
-awaitable<curlio::Headers> await_headers(curlio::Response& response, unsigned int max_redirects)
+awaitable<cURLio::Headers> await_headers(cURLio::Response& response, unsigned int max_redirects)
 {
 	for (unsigned int i = 0; true; ++i) {
 		auto headers     = co_await response.async_wait_headers(use_awaitable);
@@ -24,14 +24,14 @@ awaitable<curlio::Headers> await_headers(curlio::Response& response, unsigned in
 
 awaitable<void> async_main()
 {
-	curlio::Session session{ co_await this_coro::executor };
+	cURLio::Session session{ co_await this_coro::executor };
 
-	auto request = std::make_shared<curlio::Request>(session);
+	auto request = std::make_shared<cURLio::Request>(session);
 	request->set_option<CURLOPT_URL>("http://localhost:8088");
 	request->set_option<CURLOPT_MAXREDIRS>(3);
 	request->set_option<CURLOPT_FOLLOWLOCATION>(1);
 
-	std::shared_ptr<curlio::Response> response{};
+	std::shared_ptr<cURLio::Response> response{};
 
 	for (int i = 0; i < 2; ++i) {
 		response           = co_await session.async_start(request, use_awaitable);

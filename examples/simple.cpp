@@ -4,7 +4,7 @@
 // #define CURLIO_USE_STANDALONE_ASIO
 // #define CURLIO_ENABLE_LOGGING
 
-#include <curlio/curlio.hpp>
+#include <cURLio.hpp>
 #include <iostream>
 
 using namespace CURLIO_ASIO_NS;
@@ -14,12 +14,12 @@ int main(int argc, char** argv)
 	curl_global_init(CURL_GLOBAL_ALL);
 	io_service service;
 
-	curlio::Session session{ service.get_executor() };
+	cURLio::Session session{ service.get_executor() };
 	co_spawn(
 	  service,
 	  [&]() -> awaitable<void> {
 		  // Create request and set options.
-		  auto request = std::make_shared<curlio::Request>(session);
+		  auto request = std::make_shared<cURLio::Request>(session);
 		  curl_easy_setopt(request->native_handle(), CURLOPT_URL, "http://example.com");
 		  curl_easy_setopt(request->native_handle(), CURLOPT_USERAGENT, "cURLio");
 

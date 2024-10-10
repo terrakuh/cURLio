@@ -12,7 +12,7 @@
 #include <string>
 #include <string_view>
 
-namespace curlio::detail {
+namespace cURLio::detail {
 
 constexpr std::string_view trim(std::string_view str, const std::locale& locale = {})
 {
@@ -164,4 +164,4 @@ private:
 	}
 };
 
-} // namespace curlio::detail
+} // namespace cURLio::detail

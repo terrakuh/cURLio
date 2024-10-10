@@ -3,7 +3,7 @@
 #include <locale>
 #include <string>
 
-namespace curlio::detail {
+namespace cURLio::detail {
 
 struct CaseInsensitiveLess {
 	std::locale locale{};
@@ -28,4 +28,4 @@ struct CaseInsensitiveLess {
 	}
 };
 
-} // namespace curlio::detail
+} // namespace cURLio::detail

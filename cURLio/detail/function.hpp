@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace curlio::detail {
+namespace cURLio::detail {
 
 template<typename Type>
 class Function;
@@ -62,4 +62,4 @@ private:
 	std::unique_ptr<Invoker<Return, Arguments...>> _invoker;
 };
 
-} // namespace curlio::detail
+} // namespace cURLio::detail

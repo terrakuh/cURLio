@@ -5,7 +5,7 @@
 #include "debug.hpp"
 #include "error.hpp"
 
-namespace curlio {
+namespace cURLio {
 
 template<typename Executor>
 inline BasicRequest<Executor>::BasicRequest(BasicSession<Executor>& session) : _strand{ session._strand }
@@ -183,4 +183,4 @@ inline std::size_t BasicRequest<Executor>::_read_callback(char* data, std::size_
 	return CURL_READFUNC_PAUSE;
 }
 
-} // namespace curlio
+} // namespace cURLio
