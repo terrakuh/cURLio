@@ -22,9 +22,13 @@ public:
 	BasicResponse(const BasicResponse& copy) = delete;
 	BasicResponse(BasicResponse&& move)      = delete;
 
+	/// Returns information about from the easy handle. Access is synchronized.
 	template<CURLINFO Option>
 	auto async_get_info(auto&& token) const;
+	/// Reads some data from the remote and stores it in the given buffer (ASIO `MutableBufferSequence`).
 	auto async_read_some(const auto& buffers, auto&& token);
+	/// Waits until a complete header section is received. This could be the first or the last if this is a
+	/// redirect depending on the settings.
 	auto async_wait_headers(auto&& token);
 	CURLIO_NO_DISCARD executor_type get_executor() const noexcept;
 	CURLIO_NO_DISCARD strand_type& get_strand() noexcept;

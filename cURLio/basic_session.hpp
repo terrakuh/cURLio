@@ -11,6 +11,12 @@
 
 namespace cURLio {
 
+/**
+ * A session wraps a single `CURLM` (cURL multi handle) and a strand from ASIO. This enables to run multiple
+ * easy handle at once without blocking.
+ *
+ * @tparam Executor The ASIO executor type. Most of the time `CURLIO_ASIO_NS::any_io_executor` is enough.
+ */
 template<typename Executor>
 class BasicSession {
 public:
@@ -24,6 +30,9 @@ public:
 	BasicSession(BasicSession&& move)      = delete;
 	~BasicSession();
 
+	/// Starts the request. If data needs to be sent, this can be done after starting. Otherwise cURL will start
+	/// downloading and pause until the internal buffer is filled. The returned response can be used to read the
+	/// response.
 	auto async_start(request_pointer request, auto&& token);
 	CURLIO_NO_DISCARD executor_type get_executor() const noexcept;
 	CURLIO_NO_DISCARD strand_type& get_strand() noexcept;
@@ -35,9 +44,12 @@ private:
 	friend class BasicRequest<Executor>;
 
 	CURLM* _multi_handle;
+	/// Used to synchronize access to cURL (easy and multi).
 	std::shared_ptr<strand_type> _strand;
-	std::map<CURL*, response_pointer> _active_requests;
-	std::map<curl_socket_t, std::shared_ptr<detail::SocketData>> _sockets;
+	std::map<CURL*, response_pointer> _active_requests{};
+	/// All opened sockets by cURL.
+	std::map<curl_socket_t, std::shared_ptr<detail::SocketData>> _sockets{};
+	/// Required to periodically perform the actions from cURL. Controlled by cURL.
 	CURLIO_ASIO_NS::steady_timer _timer{ *_strand };
 
 	void _monitor(const std::shared_ptr<detail::SocketData>& data, detail::SocketData::WaitFlag type) noexcept;

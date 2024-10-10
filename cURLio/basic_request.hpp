@@ -21,10 +21,14 @@ public:
 	BasicRequest(BasicRequest&& move) = delete;
 	~BasicRequest();
 
+	/// Sets cURL option and checks the result.
 	template<CURLoption Option>
 	void set_option(detail::option_type<Option> value);
+	/// Appends the given header value (e.g. `"User-Agent: me"`) to cURL header list.
 	void append_header(const char* header);
+	/// Frees all headers.
 	void free_headers() noexcept;
+	/// Sends some of the given buffer (ASIO `ConstBufferSequence`) to the remote.
 	auto async_write_some(const auto& buffers, auto&& token);
 	auto async_abort(auto&& token);
 	CURLIO_NO_DISCARD CURL* native_handle() const noexcept;
@@ -42,6 +46,7 @@ private:
 	// The CURL easy handle. The response owns this instance.
 	CURL* _handle;
 	curl_slist* _additional_headers = nullptr;
+	/// An optional handler waiting to send more data.
 	detail::Function<std::size_t(detail::asio_error_code, char*, std::size_t)> _send_handler{};
 
 	BasicRequest(std::shared_ptr<BasicSession<Executor>>&& session);
